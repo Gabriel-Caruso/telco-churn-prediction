@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# csv and databricks
+.csv
+mlruns/
+.databricks/
