@@ -18,7 +18,7 @@ GOLD_TABLE = f"{GOLD}.customer_features"
 MODEL_NAME = f"{MODELS}.churn_classifier"
 
 RANDOM_SEED = 42
-TARGET = "Churn"
+TARGET = "churn"
 
 
 # Grupos de columnas
