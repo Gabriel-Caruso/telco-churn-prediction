@@ -18,20 +18,22 @@ GOLD_TABLE = f"{GOLD}.customer_features"
 MODEL_NAME = f"{MODELS}.churn_classifier"
 
 RANDOM_SEED = 42
-TARGET = "churn"
-
 
 # Grupos de columnas
-ID = "customerID"
+ID     = "customer_id"
+TARGET = "churn"
 
-DEMOGRAFICAS = ["gender", "SeniorCitizen", "Partner", "Dependents"]
-CONTRATO     = ["Contract", "PaperlessBilling", "PaymentMethod"]
-TELEFONIA    = ["PhoneService", "MultipleLines"]
-INTERNET     = ["InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies"]
+DEMOGRAFICAS = ["gender", "senior_citizen", "partner", "dependents"]
+CONTRATO     = ["contract", "paperless_billing", "payment_method"]
+TELEFONIA    = ["phone_service", "multiple_lines"]
+INTERNET     = ["internet_service", "online_security", "online_backup",
+                "device_protection", "tech_support", "streaming_tv", "streaming_movies"]
 
 CATEGORICAS = DEMOGRAFICAS + CONTRATO + TELEFONIA + INTERNET
-NUMERICAS   = ["tenure", "MonthlyCharges", "TotalCharges"]
+NUMERICAS   = ["tenure", "monthly_charges", "total_charges"]
 
 # Subgrupos de servicios, según los hallazgos de la Fase 2 en notebooks/02_exploration
-SERVICIOS_SOPORTE = ["OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport"]
-SERVICIOS_OCIO    = ["StreamingTV", "StreamingMovies"]
+SERVICIOS_SOPORTE = ["online_security", "online_backup", "device_protection", "tech_support"]
+SERVICIOS_OCIO    = ["streaming_tv", "streaming_movies"]
+METODOS_AUTOMATICOS = ["Bank transfer (automatic)", "Credit card (automatic)"]
+
