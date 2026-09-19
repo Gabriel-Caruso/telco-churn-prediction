@@ -37,3 +37,10 @@ SERVICIOS_SOPORTE = ["online_security", "online_backup", "device_protection", "t
 SERVICIOS_OCIO    = ["streaming_tv", "streaming_movies"]
 METODOS_AUTOMATICOS = ["Bank transfer (automatic)", "Credit card (automatic)"]
 
+FEATURES_DERIVADAS = [
+    "is_new_customer", "tenure_max",
+    "n_support_services", "n_entertainment_services",
+    "avg_historical_charge", "charge_ratio",
+    "fiber_no_support", "automatic_payment",
+]
+
