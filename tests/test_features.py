@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from churn.features import (is_new_customer, tenure_max, n_support_services, n_entertainment_services, avg_historical_charge, charge_ratio)
+from churn.features import (is_new_customer, tenure_max, n_support_services, n_entertainment_services, avg_historical_charge, charge_ratio, fiber_no_support, automatic_payment)
 
 SOPORTE = ["online_security", "online_backup", "device_protection", "tech_support"]
 OCIO = ["streaming_tv", "streaming_movies"]
