@@ -16,8 +16,10 @@ GOLD_TABLE = f"{GOLD}.customer_features"
 
 # Modelo / model
 MODEL_NAME = f"{MODELS}.churn_classifier"
-
 RANDOM_SEED = 42
+
+# MLflow
+MLFLOW_EXPERIMENT_NAME = "telco-churn"
 
 # Grupos de columnas
 ID     = "customer_id"
