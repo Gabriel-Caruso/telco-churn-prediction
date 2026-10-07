@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pytest
+from churn.config import FEATURES_DERIVADAS
+from churn.features import silver_a_gold
 
 from churn.features import (is_new_customer, tenure_max, n_support_services, n_entertainment_services, avg_historical_charge, charge_ratio, fiber_no_support, automatic_payment)
 
@@ -69,3 +71,17 @@ def test_fiber_no_support(clientes):
 
 def test_automatic_payment(clientes):
     assert automatic_payment(clientes).tolist() == [False, True, False, True]
+
+def test_silver_a_gold_no_modifica_entrada(clientes):
+    antes = clientes.copy()
+    silver_a_gold(clientes)
+    pd.testing.assert_frame_equal(clientes, antes)
+
+
+def test_silver_a_gold_columnas(clientes):
+    gold = silver_a_gold(clientes)
+    faltan = [c for c in FEATURES_DERIVADAS if c not in gold.columns]
+
+    assert not faltan, f"Faltan features: {faltan}"
+    assert "total_charges" not in gold.columns
+    assert len(gold) == len(clientes)
