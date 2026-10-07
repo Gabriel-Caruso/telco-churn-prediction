@@ -52,3 +52,4 @@ SCORES_TABLE = f"{GOLD}.customer_scores"
 EXPORTS_VOLUME = f"/Volumes/{CATALOG}/gold/exports"
 SCORES_CSV = f"{EXPORTS_VOLUME}/customer_scores.csv"
 
+ENDPOINT_NAME = "churn-classifier"
