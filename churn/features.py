@@ -32,3 +32,19 @@ def fiber_no_support(pdf: pd.DataFrame) -> pd.Series:
 
 def automatic_payment(pdf: pd.DataFrame, metodos=METODOS_AUTOMATICOS) -> pd.Series:
     return pdf["payment_method"].isin(metodos)
+
+def silver_a_gold(pdf: pd.DataFrame) -> pd.DataFrame:
+    """Recibe clientes en formato silver y devuelve el formato gold:
+    las ocho features derivadas añadidas y total_charges descartada."""
+    gold = pdf.copy()
+
+    gold["is_new_customer"] = is_new_customer(gold)
+    gold["tenure_max"] = tenure_max(gold)
+    gold["n_support_services"] = n_support_services(gold)
+    gold["n_entertainment_services"] = n_entertainment_services(gold)
+    gold["avg_historical_charge"] = avg_historical_charge(gold)
+    gold["charge_ratio"] = charge_ratio(gold["monthly_charges"], gold["avg_historical_charge"])
+    gold["fiber_no_support"] = fiber_no_support(gold)
+    gold["automatic_payment"] = automatic_payment(gold)
+
+    return gold.drop(columns=["total_charges"])
