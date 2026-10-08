@@ -8,14 +8,15 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
-from sklearn.metrics import average_precision_score
+from sklearn.metrics import average_precision_score, precision_recall_curve
 
 CARPETA_APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(CARPETA_APP.parent))
 
 from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
 from logica import (
-    altas_nuevas, cambios_en_riesgo, contribuciones, medias_transformadas, pasar_un_mes, puntuar,
+    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, importancia_global,
+    matriz_confusion, medias_transformadas, pasar_un_mes, puntuar,
 )
 from textos import TEXTOS
 
@@ -51,6 +52,8 @@ COLUMNAS_FILTRO = ["contract", "internet_service", "payment_method"]
 COLUMNAS_ENTERAS = ["senior_citizen", "tenure"]
 # Variables que más suben y más bajan el riesgo que se muestran en la explicación
 N_EXPLICACION = 5
+# Variables que se muestran en el gráfico de importancia global
+N_IMPORTANCIA = 12
 COLUMNAS_DECIMALES = ["monthly_charges", "total_charges"]
 
 st.set_page_config(page_title="Telco churn", layout="wide")
@@ -101,6 +104,18 @@ def medias_entrenamiento(_modelo):
     silver = cargar_clientes_silver()
     train = silver[~silver[ID].isin(cargar_ids_test())]
     return medias_transformadas(train, _modelo)
+
+
+@st.cache_data
+def cargar_challengers():
+    """Diferencias de PR-AUC por fold frente a la regresión logística, copiadas de
+    notebooks/11_challenger.ipynb. No se calculan aquí: habría que reentrenar los modelos."""
+    return pd.read_csv(CARPETA_APP / "data" / "challenger_folds.csv")
+
+
+@st.cache_data
+def importancia_test(_modelo, umbral):
+    return importancia_global(puntuar_test(_modelo, umbral), _modelo, medias_entrenamiento(_modelo))
 
 
 modelo, metadatos = cargar_modelo()
@@ -310,6 +325,119 @@ def grafico_contribuciones(tabla):
     return barras + cero
 
 
+def grafico_precision_recall(test, umbral_prueba, matriz):
+    """Curva PR del conjunto de test, con el umbral de prueba marcado y la línea del azar."""
+    precision, recall, _ = precision_recall_curve(test["churn"], test["churn_probability"])
+    curva = pd.DataFrame({"recall": recall, "precision": precision, "orden": range(len(recall))})
+    base = test["churn"].mean()
+
+    linea = alt.Chart(curva).mark_line(color="gray").encode(
+        x=alt.X("recall:Q", title=textos["eje_recall"], scale=alt.Scale(domain=[0, 1])),
+        y=alt.Y("precision:Q", title=textos["eje_precision"], scale=alt.Scale(domain=[0, 1])),
+        order="orden:Q",
+    )
+    azar = alt.Chart(pd.DataFrame({"base": [base]})).mark_rule(
+        color="gray", strokeDash=[6, 4],
+    ).encode(y="base:Q")
+
+    detectados = matriz["detectados"]
+    marcados = detectados + matriz["falsas_alarmas"]
+    if marcados > 0:
+        precision_umbral = detectados / marcados
+    else:
+        precision_umbral = 1.0
+    punto_datos = pd.DataFrame({
+        "recall": [detectados / (detectados + matriz["perdidos"])],
+        "precision": [precision_umbral],
+        "etiqueta": [f"{textos['modelo_slider']}: {umbral_prueba:.2f}"],
+    })
+    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color="gray").encode(
+        x="recall:Q", y="precision:Q", tooltip=["etiqueta:N"],
+    )
+    return linea + azar + punto
+
+
+def grafico_ganancia(test, umbral_prueba):
+    """Curva de ganancia acumulada del modelo frente a contactar al azar.
+    Las dos series se distinguen por el trazo, no solo por el color."""
+    curva = curva_ganancia(test["churn"], test["churn_probability"])
+    curva["serie"] = textos["serie_modelo"]
+    azar = pd.DataFrame({
+        "contactados": [0.0, 1.0],
+        "capturadas": [0.0, 1.0],
+        "serie": [textos["serie_azar"], textos["serie_azar"]],
+    })
+    datos = pd.concat([curva, azar], ignore_index=True)
+
+    lineas = alt.Chart(datos).mark_line(color="gray").encode(
+        x=alt.X("contactados:Q", title=textos["eje_contactados"], axis=alt.Axis(format="%")),
+        y=alt.Y("capturadas:Q", title=textos["eje_capturadas"], axis=alt.Axis(format="%")),
+        strokeDash=alt.StrokeDash(
+            "serie:N", title=textos["serie"],
+            scale=alt.Scale(
+                domain=[textos["serie_modelo"], textos["serie_azar"]],
+                range=[[1, 0], [6, 4]],
+            ),
+        ),
+    )
+
+    marcados = test["churn_probability"] >= umbral_prueba
+    punto_datos = pd.DataFrame({
+        "contactados": [marcados.mean()],
+        "capturadas": [test.loc[marcados, "churn"].sum() / test["churn"].sum()],
+        "etiqueta": [f"{textos['modelo_slider']}: {umbral_prueba:.2f}"],
+    })
+    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color="gray").encode(
+        x="contactados:Q", y="capturadas:Q", tooltip=["etiqueta:N"],
+    )
+    return lineas + punto
+
+
+def grafico_importancia(importancia):
+    """Barras horizontales con las variables que más mueven la predicción."""
+    primeras = importancia.head(N_IMPORTANCIA)
+    etiquetas = []
+    for variable in primeras.index:
+        etiquetas.append(textos["campos"][variable])
+    datos = pd.DataFrame({"variable": etiquetas, "importancia": primeras.to_numpy()})
+    return alt.Chart(datos).mark_bar(color="gray").encode(
+        x=alt.X("importancia:Q", title=textos["eje_importancia"]),
+        y=alt.Y("variable:N", sort="-x", title=None),
+        tooltip=[alt.Tooltip("importancia:Q", format=".2f")],
+    )
+
+
+def grafico_challengers(folds):
+    """Diferencia por fold de cada challenger frente a la regresión logística, con su media
+    y la banda de +-0,02 que se consideró ruido. Folds y media se distinguen por la forma."""
+    medias = folds.groupby("modelo", as_index=False)["diferencia"].mean()
+    puntos = folds.copy()
+    puntos["tipo"] = textos["fold"]
+    medias["tipo"] = textos["media"]
+    medias["fold"] = 0
+    datos = pd.concat([puntos, medias], ignore_index=True)
+
+    banda = alt.Chart(pd.DataFrame({"desde": [-0.02], "hasta": [0.02]})).mark_rect(
+        color="gray", opacity=0.2,
+    ).encode(x="desde:Q", x2="hasta:Q")
+    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color="gray").encode(x="cero:Q")
+    marcas = alt.Chart(datos).mark_point(filled=True, color="gray", size=90).encode(
+        x=alt.X("diferencia:Q", title=textos["eje_diferencia"], axis=alt.Axis(format="+.2f")),
+        y=alt.Y("modelo:N", title=None),
+        shape=alt.Shape(
+            "tipo:N", title=textos["tipo"],
+            scale=alt.Scale(domain=[textos["fold"], textos["media"]], range=["circle", "diamond"]),
+        ),
+        tooltip=[
+            alt.Tooltip("modelo:N", title=textos["eje_modelo"]),
+            alt.Tooltip("tipo:N", title=textos["tipo"]),
+            alt.Tooltip("fold:Q", title=textos["fold"]),
+            alt.Tooltip("diferencia:Q", format="+.3f"),
+        ],
+    )
+    return banda + cero + marcas
+
+
 def texto_estado(en_riesgo):
     if en_riesgo:
         return textos["en_riesgo"]
@@ -390,11 +518,12 @@ with st.sidebar:
 st.title(textos["titulo"])
 st.write(textos["subtitulo"])
 
-pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion = st.tabs([
+pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion, pestana_modelo = st.tabs([
     textos["pestana_resumen"],
     textos["pestana_cliente"],
     textos["pestana_riesgo"],
     textos["pestana_simulacion"],
+    textos["pestana_modelo"],
 ])
 
 with pestana_resumen:
@@ -631,3 +760,52 @@ with pestana_simulacion:
             st.caption(textos["sim_ultima_mes"].format(mes=st.session_state["sim_mes"]))
         else:
             st.caption(textos["sim_ultima_altas"].format(n=n, mes=st.session_state["sim_mes"]))
+
+with pestana_modelo:
+    test = puntuar_test(modelo, umbral)
+    st.caption(textos["modelo_intro"].format(n=len(test), umbral=f"{umbral:.2f}"))
+    umbral_prueba = st.slider(
+        textos["modelo_slider"], min_value=0.05, max_value=0.95, value=float(umbral), step=0.05,
+        key="umbral_prueba",
+    )
+    matriz = matriz_confusion(test["churn"], test["churn_probability"], umbral_prueba)
+
+    col_matriz, col_pr = st.columns([2, 3])
+    with col_matriz:
+        st.markdown(f"**{textos['modelo_matriz_titulo']}**")
+        fila_arriba = st.columns(2, border=True)
+        fila_arriba[0].metric(textos["modelo_detectados"], matriz["detectados"])
+        fila_arriba[1].metric(textos["modelo_falsas"], matriz["falsas_alarmas"])
+        fila_abajo = st.columns(2, border=True)
+        fila_abajo[0].metric(textos["modelo_perdidos"], matriz["perdidos"])
+        fila_abajo[1].metric(textos["modelo_descartados"], matriz["bien_descartados"])
+
+        marcados = matriz["detectados"] + matriz["falsas_alarmas"]
+        bajas = matriz["detectados"] + matriz["perdidos"]
+        recall = matriz["detectados"] / bajas
+        if marcados > 0:
+            precision = matriz["detectados"] / marcados
+            st.markdown(textos["modelo_precision"].format(
+                p=f"{precision:.2f}", p100=round(precision * 100),
+            ))
+        st.markdown(textos["modelo_recall"].format(r=f"{recall:.2f}", r100=round(recall * 100)))
+
+    with col_pr:
+        st.markdown(f"**{textos['modelo_pr_titulo']}**")
+        st.altair_chart(grafico_precision_recall(test, umbral_prueba, matriz), width="stretch")
+        st.caption(textos["modelo_pr_nota"].format(base=f"{test['churn'].mean():.3f}"))
+
+    col_ganancia, col_importancia = st.columns(2)
+    with col_ganancia:
+        st.markdown(f"**{textos['modelo_ganancia_titulo']}**")
+        st.altair_chart(grafico_ganancia(test, umbral_prueba), width="stretch")
+        st.caption(textos["modelo_ganancia_nota"])
+    with col_importancia:
+        st.markdown(f"**{textos['modelo_importancia_titulo']}**")
+        st.altair_chart(grafico_importancia(importancia_test(modelo, umbral)), width="stretch")
+        st.caption(textos["modelo_importancia_nota"].format(n=N_IMPORTANCIA))
+
+    st.markdown(f"**{textos['modelo_challenger_titulo']}**")
+    st.altair_chart(grafico_challengers(cargar_challengers()), width="stretch")
+    st.caption(textos["modelo_challenger_nota"])
+    st.write(textos["modelo_challenger_llamadas"])

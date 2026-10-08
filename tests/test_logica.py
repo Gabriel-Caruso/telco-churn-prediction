@@ -7,7 +7,8 @@ import pytest
 
 from churn.features import silver_a_gold
 from app.logica import (
-    altas_nuevas, cambios_en_riesgo, contribuciones, medias_transformadas, pasar_un_mes, puntuar,
+    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, importancia_global,
+    matriz_confusion, medias_transformadas, pasar_un_mes, puntuar,
 )
 
 RUTA_MODELO = Path(__file__).resolve().parents[1] / "app" / "model" / "churn_classifier.joblib"
@@ -192,3 +193,27 @@ def test_contribuciones_no_modifica_la_entrada(clientes, modelo):
     medias = medias_transformadas(clientes, modelo)
     contribuciones(clientes.iloc[[0]], modelo, medias)
     pd.testing.assert_frame_equal(clientes, original)
+
+
+def test_matriz_confusion_cuenta_las_cuatro_casillas():
+    churn_real = pd.Series([1, 1, 0, 0, 1])
+    probabilidad = pd.Series([0.9, 0.2, 0.5, 0.1, 0.4])
+    matriz = matriz_confusion(churn_real, probabilidad, 0.4)
+    assert matriz == {"detectados": 2, "falsas_alarmas": 1, "perdidos": 1, "bien_descartados": 1}
+
+
+def test_curva_ganancia_ordena_por_probabilidad():
+    churn_real = pd.Series([0, 1, 0, 1])
+    probabilidad = pd.Series([0.1, 0.9, 0.3, 0.8])
+    curva = curva_ganancia(churn_real, probabilidad)
+    # Los dos primeros contactados son las dos bajas: a mitad de lista ya están todas
+    assert curva["contactados"].tolist() == [0.0, 0.25, 0.5, 0.75, 1.0]
+    assert curva["capturadas"].tolist() == [0.0, 0.5, 1.0, 1.0, 1.0]
+
+
+def test_importancia_global_una_por_variable_y_positiva(clientes, modelo):
+    medias = medias_transformadas(clientes, modelo)
+    importancia = importancia_global(clientes, modelo, medias)
+    assert len(importancia) == len(modelo.named_steps["preprocesado"].feature_names_in_)
+    assert (importancia >= 0).all()
+    assert importancia.is_monotonic_decreasing

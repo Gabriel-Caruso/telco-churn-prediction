@@ -117,28 +117,35 @@ def variable_de_cada_columna(modelo) -> list:
     return variables
 
 
-def contribuciones(cliente: pd.DataFrame, modelo, medias: np.ndarray) -> pd.DataFrame:
-    """Aportación de cada variable a la predicción de un cliente (una fila en formato silver),
-    respecto al cliente medio de entrenamiento.
+def matriz_contribuciones(clientes: pd.DataFrame, modelo, medias: np.ndarray) -> pd.DataFrame:
+    """Aportación de cada variable para cada cliente, respecto al cliente medio de entrenamiento.
 
     En una regresión logística el logit es intercepto + suma de coef * valor. La aportación
-    de cada columna es coef * (valor - media), así que la suma de aportaciones es el logit
-    del cliente menos el logit del cliente medio: positivo sube la probabilidad de baja.
+    de cada columna es coef * (valor - media), así que la suma de aportaciones de un cliente
+    es su logit menos el logit del cliente medio: positivo sube la probabilidad de baja.
     Es el valor SHAP exacto de un modelo lineal. Las columnas del OneHot se suman por variable.
 
-    Devuelve una fila por variable con su valor en gold y su aportación, ordenada de mayor
-    a menor aportación."""
+    Devuelve un DataFrame con una fila por cliente y una columna por variable gold."""
     coeficientes = modelo.named_steps["modelo"].coef_[0]
-    valores = _transformar(cliente, modelo)[0]
-    aportes = coeficientes * (valores - medias)
+    aportes = coeficientes * (_transformar(clientes, modelo) - medias)
 
-    suma_por_variable = {}
-    for variable, aporte in zip(variable_de_cada_columna(modelo), aportes):
-        suma_por_variable[variable] = suma_por_variable.get(variable, 0.0) + aporte
+    por_variable = {}
+    for posicion, variable in enumerate(variable_de_cada_columna(modelo)):
+        if variable not in por_variable:
+            por_variable[variable] = aportes[:, posicion]
+        else:
+            por_variable[variable] = por_variable[variable] + aportes[:, posicion]
+    return pd.DataFrame(por_variable, index=clientes.index)
 
+
+def contribuciones(cliente: pd.DataFrame, modelo, medias: np.ndarray) -> pd.DataFrame:
+    """Aportaciones de un solo cliente (una fila en formato silver), con su valor en gold.
+    Devuelve una fila por variable, ordenada de mayor a menor aportación."""
+    aportes = matriz_contribuciones(cliente, modelo, medias).iloc[0]
     gold = silver_a_gold(cliente)
+
     filas = []
-    for variable, aporte in suma_por_variable.items():
+    for variable, aporte in aportes.items():
         filas.append({
             "variable": variable,
             "valor": gold[variable].iloc[0],
@@ -146,3 +153,36 @@ def contribuciones(cliente: pd.DataFrame, modelo, medias: np.ndarray) -> pd.Data
         })
     tabla = pd.DataFrame(filas)
     return tabla.sort_values("contribucion", ascending=False, ignore_index=True)
+
+
+def importancia_global(clientes: pd.DataFrame, modelo, medias: np.ndarray) -> pd.Series:
+    """Media del valor absoluto de la aportación de cada variable sobre un conjunto de
+    clientes: cuánto mueve cada variable la predicción, en promedio y sin importar el signo.
+    Ordenada de mayor a menor."""
+    absolutas = matriz_contribuciones(clientes, modelo, medias).abs()
+    return absolutas.mean().sort_values(ascending=False)
+
+
+def matriz_confusion(churn_real: pd.Series, probabilidad: pd.Series, umbral: float) -> dict:
+    """Cuenta de las cuatro casillas con el criterio de la app: en riesgo si probabilidad >= umbral."""
+    marcados = probabilidad >= umbral
+    se_van = churn_real == 1
+    return {
+        "detectados": int((marcados & se_van).sum()),
+        "falsas_alarmas": int((marcados & ~se_van).sum()),
+        "perdidos": int((~marcados & se_van).sum()),
+        "bien_descartados": int((~marcados & ~se_van).sum()),
+    }
+
+
+def curva_ganancia(churn_real: pd.Series, probabilidad: pd.Series) -> pd.DataFrame:
+    """Curva de ganancia acumulada: si se contacta a los clientes de mayor a menor
+    probabilidad, qué fracción de las bajas se ha capturado tras contactar a cada fracción
+    de clientes. Empieza en (0, 0) y termina en (1, 1)."""
+    orden = probabilidad.sort_values(ascending=False).index
+    capturadas = churn_real.loc[orden].cumsum().to_numpy() / churn_real.sum()
+    contactados = np.arange(1, len(orden) + 1) / len(orden)
+    return pd.DataFrame({
+        "contactados": np.concatenate([[0.0], contactados]),
+        "capturadas": np.concatenate([[0.0], capturadas]),
+    })

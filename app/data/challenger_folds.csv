@@ -1,0 +1,16 @@
+fold,modelo,diferencia
+1,Random forest,0.041
+2,Random forest,0.042
+3,Random forest,-0.006
+4,Random forest,-0.010
+5,Random forest,0.031
+1,Gradient boosting,0.039
+2,Gradient boosting,0.035
+3,Gradient boosting,0.012
+4,Gradient boosting,-0.008
+5,Gradient boosting,0.014
+1,XGBoost,0.047
+2,XGBoost,0.040
+3,XGBoost,0.010
+4,XGBoost,-0.003
+5,XGBoost,0.023

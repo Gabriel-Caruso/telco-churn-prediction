@@ -73,6 +73,61 @@ TEXTOS = {
         "pestana_cliente": "Consultar un cliente",
         "pestana_riesgo": "Lista de riesgo",
         "pestana_simulacion": "Simular un mes",
+        "pestana_modelo": "Modelo",
+        "modelo_intro": (
+            "Evaluación sobre los {n} clientes de test, que el modelo no vio al entrenar. "
+            "Mueve el umbral para ver cómo cambia el reparto entre bajas detectadas y "
+            "falsas alarmas. El umbral de producción es {umbral}."
+        ),
+        "modelo_slider": "Umbral de prueba",
+        "modelo_matriz_titulo": "Resultado con este umbral",
+        "modelo_detectados": "Bajas detectadas",
+        "modelo_falsas": "Falsas alarmas",
+        "modelo_perdidos": "Bajas no detectadas",
+        "modelo_descartados": "Bien fuera de la lista",
+        "modelo_precision": "**Precisión {p}:** de cada 100 clientes en la lista, {p100} se van de verdad.",
+        "modelo_recall": "**Recall {r}:** se detectan {r100} de cada 100 bajas.",
+        "modelo_pr_titulo": "Curva de precisión y recall",
+        "modelo_pr_nota": (
+            "Cada punto de la curva es un umbral distinto; el punto marcado es el umbral de "
+            "prueba. La línea discontinua es un modelo al azar ({base})."
+        ),
+        "eje_precision": "Precisión",
+        "eje_recall": "Recall",
+        "modelo_ganancia_titulo": "Curva de ganancia acumulada",
+        "modelo_ganancia_nota": (
+            "Contactando a los clientes de mayor a menor probabilidad, qué parte de las bajas "
+            "se captura según cuántos clientes se contacten. El punto marcado es el umbral de prueba."
+        ),
+        "eje_contactados": "Clientes contactados",
+        "eje_capturadas": "Bajas capturadas",
+        "serie_modelo": "Modelo",
+        "serie_azar": "Al azar",
+        "serie": "Serie",
+        "modelo_importancia_titulo": "Qué variables pesan más",
+        "modelo_importancia_nota": (
+            "Media del valor absoluto de la aportación de cada variable en los clientes de "
+            "test, respecto al cliente medio de entrenamiento. Mide cuánto mueve cada variable "
+            "la predicción, no en qué dirección. Se muestran las {n} primeras."
+        ),
+        "eje_importancia": "Aportación media absoluta (logit)",
+        "modelo_challenger_titulo": "Champion frente a challengers",
+        "modelo_challenger_nota": (
+            "Diferencia de PR-AUC de cada modelo ajustado frente a la regresión logística, en "
+            "los mismos 5 folds de validación cruzada sobre entrenamiento. La banda gris marca "
+            "±0,02, el margen que se consideró ruido. Cifras del notebook 11_challenger: no se "
+            "calculan en la app."
+        ),
+        "modelo_challenger_llamadas": (
+            "Con la misma lista de llamadas, XGBoost encuentra 982 de las 1495 bajas de "
+            "entrenamiento y la regresión logística 964. Se mantuvo la regresión logística "
+            "por la explicabilidad de sus coeficientes."
+        ),
+        "eje_diferencia": "Diferencia de PR-AUC frente a la regresión logística",
+        "eje_modelo": "Modelo",
+        "fold": "Fold",
+        "media": "Media",
+        "tipo": "Tipo",
         "sobre_proyecto": (
             "Proyecto de ciclo de vida de machine learning con el dataset IBM Telco "
             "Customer Churn, desarrollado en Databricks con MLflow y Unity Catalog."
@@ -258,6 +313,62 @@ TEXTOS = {
         "pestana_cliente": "Score a customer",
         "pestana_riesgo": "Risk list",
         "pestana_simulacion": "Simulate a month",
+        "pestana_modelo": "Model",
+        "modelo_intro": (
+            "Evaluation on the {n} test customers, which the model did not see during "
+            "training. Move the threshold to see how the split between detected churners and "
+            "false alarms changes. The production threshold is {umbral}."
+        ),
+        "modelo_slider": "Test threshold",
+        "modelo_matriz_titulo": "Result at this threshold",
+        "modelo_detectados": "Churners detected",
+        "modelo_falsas": "False alarms",
+        "modelo_perdidos": "Churners missed",
+        "modelo_descartados": "Correctly left out",
+        "modelo_precision": "**Precision {p}:** out of every 100 customers on the list, {p100} actually leave.",
+        "modelo_recall": "**Recall {r}:** {r100} out of every 100 churners are detected.",
+        "modelo_pr_titulo": "Precision-recall curve",
+        "modelo_pr_nota": (
+            "Each point on the curve is a different threshold; the marked point is the test "
+            "threshold. The dashed line is a random model ({base})."
+        ),
+        "eje_precision": "Precision",
+        "eje_recall": "Recall",
+        "modelo_ganancia_titulo": "Cumulative gains curve",
+        "modelo_ganancia_nota": (
+            "Contacting customers from highest to lowest probability, the share of churners "
+            "captured depending on how many customers are contacted. The marked point is the "
+            "test threshold."
+        ),
+        "eje_contactados": "Customers contacted",
+        "eje_capturadas": "Churners captured",
+        "serie_modelo": "Model",
+        "serie_azar": "Random",
+        "serie": "Series",
+        "modelo_importancia_titulo": "Which variables matter most",
+        "modelo_importancia_nota": (
+            "Mean absolute contribution of each variable on the test customers, relative to "
+            "the average training customer. It measures how much each variable moves the "
+            "prediction, not in which direction. The top {n} are shown."
+        ),
+        "eje_importancia": "Mean absolute contribution (logit)",
+        "modelo_challenger_titulo": "Champion versus challengers",
+        "modelo_challenger_nota": (
+            "PR-AUC difference of each tuned model against logistic regression, on the same "
+            "5 cross-validation folds over the training set. The grey band marks ±0.02, the "
+            "margin considered noise. Figures from the 11_challenger notebook: not computed "
+            "in the app."
+        ),
+        "modelo_challenger_llamadas": (
+            "With the same call list, XGBoost finds 982 of the 1,495 training churners and "
+            "logistic regression 964. Logistic regression was kept for the explainability of "
+            "its coefficients."
+        ),
+        "eje_diferencia": "PR-AUC difference against logistic regression",
+        "eje_modelo": "Model",
+        "fold": "Fold",
+        "media": "Mean",
+        "tipo": "Type",
         "sobre_proyecto": (
             "End-to-end machine learning project on the IBM Telco Customer Churn "
             "dataset, built on Databricks with MLflow and Unity Catalog."
