@@ -214,3 +214,18 @@ def diferencia_por_servicio(clientes: pd.DataFrame, servicios: list) -> pd.DataF
         filas.append({"servicio": servicio, "diferencia": tasa_sin - tasa_con})
     tabla = pd.DataFrame(filas)
     return tabla.sort_values("diferencia", ascending=False, ignore_index=True)
+
+
+def tasa_por_tramos(clientes: pd.DataFrame, columna: str, n_tramos: int) -> pd.DataFrame:
+    """Tasa de baja por tramos de igual número de clientes (cuantiles) de una columna numérica.
+    El grupo es el rango del tramo como texto, por ejemplo '68-81'."""
+    tramos = pd.qcut(clientes[columna], n_tramos)
+    agrupado = clientes.groupby(tramos, observed=True)[TARGET]
+    nombres = []
+    for intervalo in agrupado.mean().index:
+        nombres.append(f"{intervalo.left:.0f}-{intervalo.right:.0f}")
+    return pd.DataFrame({
+        "grupo": nombres,
+        "tasa": agrupado.mean().to_numpy(),
+        "clientes": agrupado.size().to_numpy(),
+    })

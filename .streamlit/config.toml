@@ -1,26 +1,32 @@
 # Tema de la app. Streamlit Community Cloud lo lee desde la raíz del repositorio
 # aunque el archivo principal esté en app/app.py.
-# Propuesta inicial inspirada en Retaino: fondo casi negro con tinte verde y un único acento menta.
-# Los colores de los gráficos que no dependen del tema están en app/app.py (sección de colores).
+# Inspirado en Retaino: fondo casi negro con tinte verde y un único acento menta.
+# Lo que el tema no cubre (fondo de tarjetas, texto de botones, cabecera) está en app/estilo.py;
+# los colores de los gráficos, en app/app.py.
 
 [theme]
 # Tema del que se heredan los valores no definidos aquí
 base = "dark"
 
-# Color de acento: botones principales, controles seleccionados, sliders, enlaces
+# Color de acento: controles seleccionados, sliders, pestaña activa y fondo de los botones
+# principales. El texto oscuro de esos botones lo pone app/estilo.py.
 primaryColor = "#6EE7B7"
 
 # Fondo de la página
 backgroundColor = "#0B1210"
 
-# Fondo de los controles (desplegables, campos numéricos, menús)
-secondaryBackgroundColor = "#131C19"
+# Fondo de los controles (desplegables, campos numéricos, menús). Más claro que las tarjetas
+# para que se distingan dentro de ellas.
+secondaryBackgroundColor = "#17231F"
 
 # Color del texto
 textColor = "#E6EDEA"
 
 # Borde de tarjetas, tablas y controles
 borderColor = "#22302B"
+
+# Verde de las etiquetas (st.badge con color="green"): texto menta sobre fondo menta tenue
+greenColor = "#6EE7B7"
 
 # Una sola fuente para toda la app, cargada desde Google Fonts
 font = "Space Grotesk:https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"

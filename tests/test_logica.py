@@ -9,7 +9,7 @@ from churn.features import silver_a_gold
 from app.logica import (
     altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, diferencia_por_servicio,
     importancia_global, matriz_confusion, medias_transformadas, numero_de_extras,
-    pasar_un_mes, puntuar, tasa_por_grupo,
+    pasar_un_mes, puntuar, tasa_por_grupo, tasa_por_tramos,
 )
 
 RUTA_MODELO = Path(__file__).resolve().parents[1] / "app" / "model" / "churn_classifier.joblib"
@@ -247,3 +247,14 @@ def test_diferencia_por_servicio_excluye_sin_internet(clientes_con_churn):
     tabla = diferencia_por_servicio(clientes_con_churn, ["tech_support"]).set_index("servicio")
     # Sin el servicio: 2 de 2 se van. Con el servicio: 0 de 3. El cliente sin internet no cuenta.
     assert tabla.loc["tech_support", "diferencia"] == pytest.approx(1.0)
+
+
+def test_tasa_por_tramos_cuantiles():
+    clientes = pd.DataFrame({
+        "monthly_charges": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0],
+        "churn": [1, 1, 0, 0, 0, 1],
+    })
+    tabla = tasa_por_tramos(clientes, "monthly_charges", 2)
+    assert tabla["clientes"].tolist() == [3, 3]
+    assert tabla["tasa"].tolist() == pytest.approx([2 / 3, 1 / 3])
+    assert tabla["grupo"].tolist() == ["10-35", "35-60"]

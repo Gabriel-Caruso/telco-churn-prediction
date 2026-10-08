@@ -11,8 +11,10 @@ diccionario según el idioma seleccionado y lee los textos por su clave.
 TEXTOS = {
     "es": {
         "titulo": "Telco churn",
-        "subtitulo": "Probabilidad de baja de clientes de una operadora de telecomunicaciones.",
+        "cabecera_etiqueta": "Databricks · MLflow · Unity Catalog · scikit-learn",
+        "cabecera_titulo": "Predicción de bajas en una operadora de telecomunicaciones",
         "separador_decimal": ",",
+        "simbolo_porcentaje": " %",
         "pestana_resumen": "Resumen",
         "resumen_problema": (
             "Una operadora de telecomunicaciones pierde a uno de cada cuatro clientes. "
@@ -28,58 +30,108 @@ TEXTOS = {
             "la proporción de bajas en ese conjunto."
         ),
         "resumen_arquitectura": "Arquitectura",
-        "resumen_arquitectura_nota": (
-            "Todo el ciclo se ejecuta en Databricks Free Edition. Esta app carga el "
-            "modelo exportado y calcula las features con el mismo paquete que el entrenamiento."
-        ),
         "resumen_decisiones": "Decisiones clave",
-        "resumen_decisiones_lista": (
-            "- **Métrica: PR-AUC.** Con un {tasa} de bajas, la accuracy premiaría a un "
-            "modelo que no detecta a nadie. Lo que importa es ordenar bien a los clientes por riesgo.\n"
-            "- **Umbral {umbral}.** El análisis de umbrales marcó el tramo 0,30-0,40, donde "
-            "cada baja detectada cuesta alrededor de una llamada y media de más. El valor "
-            "exacto depende del coste de una oferta y del valor de un cliente retenido.\n"
-            "- **Champion: regresión logística.** Random forest, gradient boosting y XGBoost "
-            "ajustados la superan en unos 0,02 de PR-AUC, en el límite del ruido entre folds. "
-            "No compensa perder la explicabilidad de los coeficientes.\n"
-            "- **Mismo código en entrenamiento y en la app.** Las features se calculan en un "
-            "paquete propio con tests, y la tabla gold y esta app usan la misma función."
-        ),
+        "etapas": [
+            {
+                "titulo": "1. Datos",
+                "texto": (
+                    "El CSV de IBM pasa por tres capas: bronze guarda el original, silver lo "
+                    "limpia y valida, y gold añade 8 features calculadas con un paquete propio."
+                ),
+                "tecnologias": "Databricks · Unity Catalog · tablas Delta · pytest",
+            },
+            {
+                "titulo": "2. Modelado",
+                "texto": (
+                    "Regresión logística dentro de un pipeline de scikit-learn, comparada por "
+                    "PR-AUC con validación cruzada de 5 folds. Random forest, gradient boosting "
+                    "y XGBoost compitieron como challengers."
+                ),
+                "tecnologias": "scikit-learn · MLflow",
+            },
+            {
+                "titulo": "3. Producción",
+                "texto": (
+                    "El modelo elegido se registra con el alias champion y se usa de tres formas: "
+                    "batch scoring en una tabla, un endpoint REST y una exportación para esta app."
+                ),
+                "tecnologias": "Unity Catalog · Model Serving · joblib",
+            },
+            {
+                "titulo": "4. Esta app",
+                "texto": (
+                    "Carga el modelo exportado y calcula las features con el mismo paquete que "
+                    "el entrenamiento, así que la app y el modelo nunca divergen."
+                ),
+                "tecnologias": "Streamlit Community Cloud",
+            },
+        ],
+        "decisiones": [
+            {
+                "titulo": "Métrica: PR-AUC",
+                "texto": (
+                    "Con un {tasa} de bajas, la accuracy premiaría a un modelo que no detecta "
+                    "a nadie. Lo que importa es ordenar bien a los clientes por riesgo."
+                ),
+            },
+            {
+                "titulo": "Umbral {umbral}",
+                "texto": (
+                    "El análisis de umbrales marcó el tramo 0,30-0,40, donde cada baja detectada "
+                    "cuesta alrededor de una llamada y media de más. El valor exacto depende del "
+                    "coste de una oferta y del valor de un cliente retenido."
+                ),
+            },
+            {
+                "titulo": "Champion: regresión logística",
+                "texto": (
+                    "Random forest, gradient boosting y XGBoost ajustados la superan en unos "
+                    "0,02 de PR-AUC, en el límite del ruido entre folds. No compensa perder la "
+                    "explicabilidad de los coeficientes."
+                ),
+            },
+            {
+                "titulo": "Mismo código en entrenamiento y app",
+                "texto": (
+                    "Las features se calculan en un paquete propio con tests, y la tabla gold y "
+                    "esta app usan la misma función."
+                ),
+            },
+        ],
         "resumen_uso": "Qué puedes hacer en esta app",
         "resumen_uso_lista": (
-            "- **Consultar un cliente:** introduce un perfil o carga uno real y obtén su "
-            "probabilidad de baja.\n"
+            "- **Cliente:** introduce un perfil o carga uno real y obtén su probabilidad de "
+            "baja y qué variables la explican.\n"
             "- **Lista de riesgo:** los clientes actuales ordenados por riesgo, con filtros "
             "y descarga en CSV.\n"
-            "- **Simular un mes:** cómo cambia la lista con el paso del tiempo y las altas nuevas."
+            "- **Simulación:** cómo cambia la lista con el paso del tiempo y las altas nuevas.\n"
+            "- **Exploración:** los hallazgos principales del análisis exploratorio.\n"
+            "- **Modelo:** evaluación en test, umbral ajustable y comparación con los challengers."
         ),
-        "arquitectura": {
-            "datos": "Dataset IBM Telco\\n7043 clientes",
-            "bronze": "Bronze\\nCSV sin modificar",
-            "silver": "Silver\\nlimpieza y validación",
-            "gold": "Gold\\n8 features derivadas",
-            "paquete": "Paquete churn\\nfeatures con tests",
-            "entrenamiento": "Entrenamiento\\nscikit-learn, CV 5 folds",
-            "challenger": "Challengers\\nRF, GB, XGBoost",
-            "mlflow": "MLflow\\nexperimentos y métricas",
-            "registro": "Unity Catalog\\nmodelo con alias champion",
-            "batch": "Batch scoring\\ntabla customer_scores",
-            "serving": "Model Serving\\nendpoint REST",
-            "exportacion": "Exportación\\njoblib + JSON",
-            "app": "Esta app",
-            "grupo_databricks": "Databricks Free Edition",
-            "grupo_streamlit": "Streamlit Community Cloud",
-        },
-        "pestana_cliente": "Consultar un cliente",
+        "pestana_cliente": "Cliente",
         "pestana_riesgo": "Lista de riesgo",
-        "pestana_simulacion": "Simular un mes",
+        "pestana_simulacion": "Simulación",
         "pestana_exploracion": "Exploración",
         "exp_intro": (
             "Tasa de baja de los {n} clientes del dataset en los cortes más relevantes del "
-            "análisis exploratorio. La línea discontinua es la tasa de referencia de cada "
-            "gráfico. Los textos son las conclusiones del notebook 02_exploration."
+            "análisis exploratorio. Los textos son las conclusiones del notebook "
+            "02_exploration."
         ),
         "exp_eje_tasa": "Tasa de baja",
+        "exp_por_encima": "Por encima de la referencia",
+        "exp_por_debajo": "Por debajo de la referencia",
+        "exp_posicion": "Tasa de baja",
+        "exp_ref_empresa": "Media de la empresa: {tasa}",
+        "exp_ref_fibra": "Media de la fibra: {tasa}",
+        "exp_ref_mensual": "Media de los contratos mensuales: {tasa}",
+        "exp_dest_tenure": "Bajas en el primer mes",
+        "exp_dest_contrato": "Bajas con contrato mensual",
+        "exp_dest_fibra": "Bajas en fibra sin servicios extra",
+        "exp_dest_pago": "Bajas con cheque electrónico y contrato mensual",
+        "exp_dest_servicios": "Diferencia sin y con seguridad online",
+        "exp_dest_puntos": "{puntos} puntos",
+        "exp_servicios_soporte": "Servicios de soporte",
+        "exp_servicios_ocio": "Servicios de ocio",
         "exp_eje_clientes": "Clientes",
         "exp_tenure_titulo": "Tasa de baja por antigüedad",
         "exp_tenure_texto": (
@@ -93,13 +145,36 @@ TEXTOS = {
             "variables —método de pago, cómo recibe la factura, etc.— pueden estar muy "
             "relacionadas con el tipo de contrato y hay que mirarlas con sumo cuidado."
         ),
+        "exp_simpson_titulo": "Paradoja de Simpson: cuota mensual y tipo de conexión",
+        "exp_simpson_todos": "Todos los clientes, por quintiles de cuota mensual",
+        "exp_simpson_fibra": "Solo clientes de fibra, por cuartiles de cuota mensual",
+        "exp_simpson_eje": "Cuota mensual",
+        "exp_dest_simpson": "Fibra: bajas con la cuota más baja y con la más alta",
+        "exp_simpson_texto": (
+            "Al mirar **solo a los clientes de fibra**, la tendencia se da la vuelta: los que "
+            "pagan entre 68 y 80 se dan de baja el 55 %, y los que pagan más de 101 solo el 26 %, "
+            "por debajo incluso de la media de la empresa.\n\n"
+            "Es un caso de paradoja de Simpson: la relación aparente entre cuota y baja estaba "
+            "explicada por el tipo de conexión, no por el precio. De no haberlo visto, podríamos "
+            "haberle dicho a negocio que \"los clientes más caros son los que más se van\" y "
+            "ellos haber respondido \"entonces bajamos los precios\" cuando ese no era nuestro "
+            "verdadero problema."
+        ),
         "exp_fibra_titulo": "Clientes de fibra: tasa de baja según servicios extra contratados",
         "exp_fibra_eje": "Servicios extra contratados (de 6)",
         "exp_fibra_texto": (
             "Los clientes que contratan más servicios tienen una tasa de baja mucho menor. "
             "**El problema está en la fibra contratada sola.**"
         ),
-        "exp_pago_titulo": "Contrato mensual: tasa de baja por forma de pago",
+        "exp_pago_titulo": "Variable de confusión: forma de pago y contrato",
+        "exp_pago_todos": "Todos los clientes",
+        "exp_pago_mensual": "Solo contratos mensuales",
+        "exp_pago_contexto": (
+            "La lectura inmediata sería \"el cheque electrónico provoca bajas\". Pero antes "
+            "de llevar eso a una reunión conviene comprobar algo: **el 78 % de quienes pagan "
+            "con cheque electrónico tiene contrato mes a mes**, frente al 55 % del conjunto "
+            "de la empresa."
+        ),
         "exp_pago_texto": (
             "**Conclusión:** el contrato explicaba una parte, pero no todo. A igualdad de "
             "contrato, el cheque electrónico sigue asociado a unos 20 puntos más de bajas. "
@@ -198,6 +273,7 @@ TEXTOS = {
         "grupo_personales": "Datos personales",
         "grupo_contrato": "Contrato y pago",
         "grupo_servicios": "Servicios",
+        "grupo_telefonia": "Telefonía",
         "boton_azar": "Cargar un cliente real al azar",
         "cliente_cargado": "Datos del cliente {customer_id}. Puedes modificarlos.",
         "boton_calcular": "Calcular probabilidad",
@@ -310,8 +386,10 @@ TEXTOS = {
     },
     "en": {
         "titulo": "Telco churn",
-        "subtitulo": "Churn probability for customers of a telecom operator.",
+        "cabecera_etiqueta": "Databricks · MLflow · Unity Catalog · scikit-learn",
+        "cabecera_titulo": "Churn prediction for a telecom operator",
         "separador_decimal": ".",
+        "simbolo_porcentaje": "%",
         "pestana_resumen": "Overview",
         "resumen_problema": (
             "A telecom operator loses one in four customers. This project ranks current "
@@ -326,57 +404,107 @@ TEXTOS = {
             "of churners in that set."
         ),
         "resumen_arquitectura": "Architecture",
-        "resumen_arquitectura_nota": (
-            "The whole lifecycle runs on Databricks Free Edition. This app loads the "
-            "exported model and computes features with the same package used in training."
-        ),
         "resumen_decisiones": "Key decisions",
-        "resumen_decisiones_lista": (
-            "- **Metric: PR-AUC.** With {tasa} churn, accuracy would reward a model that "
-            "detects nobody. What matters is ranking customers well by risk.\n"
-            "- **Threshold {umbral}.** The threshold analysis pointed to the 0.30-0.40 "
-            "range, where each detected churner costs about one and a half extra calls. "
-            "The exact value depends on the cost of an offer and the value of a retained customer.\n"
-            "- **Champion: logistic regression.** Tuned random forest, gradient boosting and "
-            "XGBoost beat it by about 0.02 PR-AUC, at the edge of fold-to-fold noise. Not "
-            "worth losing the explainability of its coefficients.\n"
-            "- **Same code in training and in the app.** Features are computed in a tested "
-            "in-house package, and both the gold table and this app use the same function."
-        ),
+        "etapas": [
+            {
+                "titulo": "1. Data",
+                "texto": (
+                    "The IBM CSV goes through three layers: bronze keeps the original, silver "
+                    "cleans and validates it, and gold adds 8 features computed by an in-house package."
+                ),
+                "tecnologias": "Databricks · Unity Catalog · Delta tables · pytest",
+            },
+            {
+                "titulo": "2. Modelling",
+                "texto": (
+                    "Logistic regression inside a scikit-learn pipeline, compared by PR-AUC with "
+                    "5-fold cross-validation. Random forest, gradient boosting and XGBoost "
+                    "competed as challengers."
+                ),
+                "tecnologias": "scikit-learn · MLflow",
+            },
+            {
+                "titulo": "3. Production",
+                "texto": (
+                    "The chosen model is registered with the champion alias and used in three "
+                    "ways: batch scoring into a table, a REST endpoint and an export for this app."
+                ),
+                "tecnologias": "Unity Catalog · Model Serving · joblib",
+            },
+            {
+                "titulo": "4. This app",
+                "texto": (
+                    "Loads the exported model and computes features with the same package used "
+                    "in training, so the app and the model never diverge."
+                ),
+                "tecnologias": "Streamlit Community Cloud",
+            },
+        ],
+        "decisiones": [
+            {
+                "titulo": "Metric: PR-AUC",
+                "texto": (
+                    "With {tasa} churn, accuracy would reward a model that detects nobody. "
+                    "What matters is ranking customers well by risk."
+                ),
+            },
+            {
+                "titulo": "Threshold {umbral}",
+                "texto": (
+                    "The threshold analysis pointed to the 0.30-0.40 range, where each detected "
+                    "churner costs about one and a half extra calls. The exact value depends on "
+                    "the cost of an offer and the value of a retained customer."
+                ),
+            },
+            {
+                "titulo": "Champion: logistic regression",
+                "texto": (
+                    "Tuned random forest, gradient boosting and XGBoost beat it by about 0.02 "
+                    "PR-AUC, at the edge of fold-to-fold noise. Not worth losing the "
+                    "explainability of its coefficients."
+                ),
+            },
+            {
+                "titulo": "Same code in training and app",
+                "texto": (
+                    "Features are computed in a tested in-house package, and both the gold table "
+                    "and this app use the same function."
+                ),
+            },
+        ],
         "resumen_uso": "What you can do in this app",
         "resumen_uso_lista": (
-            "- **Score a customer:** enter a profile or load a real one and get its churn "
-            "probability.\n"
+            "- **Customer:** enter a profile or load a real one and get its churn probability "
+            "and which variables explain it.\n"
             "- **Risk list:** current customers ranked by risk, with filters and CSV download.\n"
-            "- **Simulate a month:** how the list changes over time and with new customers."
+            "- **Simulation:** how the list changes over time and with new customers.\n"
+            "- **Exploration:** the main findings of the exploratory analysis.\n"
+            "- **Model:** test evaluation, adjustable threshold and comparison with the challengers."
         ),
-        "arquitectura": {
-            "datos": "IBM Telco dataset\\n7,043 customers",
-            "bronze": "Bronze\\nraw CSV",
-            "silver": "Silver\\ncleaning and validation",
-            "gold": "Gold\\n8 derived features",
-            "paquete": "churn package\\ntested features",
-            "entrenamiento": "Training\\nscikit-learn, 5-fold CV",
-            "challenger": "Challengers\\nRF, GB, XGBoost",
-            "mlflow": "MLflow\\nexperiments and metrics",
-            "registro": "Unity Catalog\\nmodel with champion alias",
-            "batch": "Batch scoring\\ncustomer_scores table",
-            "serving": "Model Serving\\nREST endpoint",
-            "exportacion": "Export\\njoblib + JSON",
-            "app": "This app",
-            "grupo_databricks": "Databricks Free Edition",
-            "grupo_streamlit": "Streamlit Community Cloud",
-        },
-        "pestana_cliente": "Score a customer",
+        "pestana_cliente": "Customer",
         "pestana_riesgo": "Risk list",
-        "pestana_simulacion": "Simulate a month",
+        "pestana_simulacion": "Simulation",
         "pestana_exploracion": "Exploration",
         "exp_intro": (
             "Churn rate of the {n} customers in the dataset across the most relevant cuts "
-            "of the exploratory analysis. The dashed line is each chart's reference rate. "
-            "The texts are the conclusions of the 02_exploration notebook."
+            "of the exploratory analysis. The texts are the conclusions of the "
+            "02_exploration notebook."
         ),
         "exp_eje_tasa": "Churn rate",
+        "exp_por_encima": "Above the reference",
+        "exp_por_debajo": "Below the reference",
+        "exp_posicion": "Churn rate",
+        "exp_ref_empresa": "Company average: {tasa}",
+        "exp_ref_fibra": "Fiber average: {tasa}",
+        "exp_ref_mensual": "Month-to-month average: {tasa}",
+        "exp_dest_tenure": "Churn in the first month",
+        "exp_dest_contrato": "Churn on month-to-month contracts",
+        "exp_dest_fibra": "Churn on fiber with no extra services",
+        "exp_dest_pago": "Churn with electronic check on month-to-month",
+        "exp_dest_servicios": "Gap without and with online security",
+        "exp_dest_puntos": "{puntos} points",
+        "exp_servicios_soporte": "Support services",
+        "exp_servicios_ocio": "Entertainment services",
         "exp_eje_clientes": "Customers",
         "exp_tenure_titulo": "Churn rate by tenure",
         "exp_tenure_texto": (
@@ -390,13 +518,36 @@ TEXTOS = {
             "— payment method, how the invoice is received, and so on — may be closely tied to "
             "contract type and must be examined with great care."
         ),
+        "exp_simpson_titulo": "Simpson's paradox: monthly charge and connection type",
+        "exp_simpson_todos": "All customers, by monthly charge quintile",
+        "exp_simpson_fibra": "Fiber customers only, by monthly charge quartile",
+        "exp_simpson_eje": "Monthly charge",
+        "exp_dest_simpson": "Fiber: churn at the lowest and at the highest charge",
+        "exp_simpson_texto": (
+            "Looking at **fibre customers only**, the trend flips: those paying between 68 and 80 "
+            "churn at 55%, while those paying above 101 churn at just 26%, below the company "
+            "average.\n\n"
+            "This is a case of Simpson's paradox: the apparent link between price and churn was "
+            "explained by the type of connection, not by the price itself. Without spotting it, we "
+            "could have told the business that \"the most expensive customers are the ones who "
+            "leave\" and they could have answered \"then let's lower prices\", when that was not "
+            "the real problem."
+        ),
         "exp_fibra_titulo": "Fiber customers: churn rate by number of extra services",
         "exp_fibra_eje": "Extra services held (out of 6)",
         "exp_fibra_texto": (
             "Customers holding more services churn far less. **The problem is fiber bought "
             "on its own.**"
         ),
-        "exp_pago_titulo": "Month-to-month contracts: churn rate by payment method",
+        "exp_pago_titulo": "Confounding: payment method and contract",
+        "exp_pago_todos": "All customers",
+        "exp_pago_mensual": "Month-to-month contracts only",
+        "exp_pago_contexto": (
+            "The immediate reading would be \"electronic check causes churn\". But before "
+            "taking that into a meeting, one thing is worth checking: **78% of those paying "
+            "by electronic check are on month-to-month contracts**, against 55% across the "
+            "company."
+        ),
         "exp_pago_texto": (
             "**Conclusion:** contract explained part of it, but not all. With contract held "
             "constant, electronic check is still associated with some 20 additional points of "
@@ -496,6 +647,7 @@ TEXTOS = {
         "grupo_personales": "Personal details",
         "grupo_contrato": "Contract and billing",
         "grupo_servicios": "Services",
+        "grupo_telefonia": "Phone",
         "boton_azar": "Load a random real customer",
         "cliente_cargado": "Data from customer {customer_id}. You can edit it.",
         "boton_calcular": "Calculate probability",

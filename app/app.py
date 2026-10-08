@@ -17,8 +17,9 @@ from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
 from logica import (
     altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, diferencia_por_servicio,
     importancia_global, matriz_confusion, medias_transformadas, numero_de_extras,
-    pasar_un_mes, puntuar, tasa_por_grupo,
+    pasar_un_mes, puntuar, tasa_por_grupo, tasa_por_tramos,
 )
+from estilo import cabecera_html, css_global
 from textos import TEXTOS
 
 URL_REPO = "https://github.com/Gabriel-Caruso/telco-churn-prediction"
@@ -31,11 +32,11 @@ COLOR_SIN_RIESGO = "#0072B2"
 COLOR_DATOS = "#6EE7B7"
 COLOR_REFERENCIA = "#8A9A94"
 COLOR_DESTACADO = "#E6EDEA"
-# Diagrama de arquitectura: Graphviz no hereda el tema, así que se le dan los colores aquí
-COLOR_DIAGRAMA_FONDO = "#131C19"
-COLOR_DIAGRAMA_TEXTO = "#E6EDEA"
-COLOR_DIAGRAMA_BORDE = "#2E3D37"
-COLOR_DIAGRAMA_LINEAS = "#8A9A94"
+# Iconos de las cuatro etapas de la arquitectura (Material Symbols)
+ICONOS_ETAPAS = [
+    ":material/database:", ":material/model_training:",
+    ":material/rocket_launch:", ":material/dashboard:",
+]
 
 SERVICIOS_INTERNET = SERVICIOS_SOPORTE + SERVICIOS_OCIO
 SI_NO = ["Yes", "No"]
@@ -67,7 +68,9 @@ N_EXPLICACION = 5
 N_IMPORTANCIA = 12
 COLUMNAS_DECIMALES = ["monthly_charges", "total_charges"]
 
-st.set_page_config(page_title="Telco churn", layout="wide")
+# Columna centrada de ancho fijo: líneas de texto cortas y lectura de arriba abajo
+st.set_page_config(page_title="Telco churn", layout="centered")
+st.html(css_global())
 
 
 @st.cache_resource
@@ -133,6 +136,29 @@ modelo, metadatos = cargar_modelo()
 umbral = metadatos["umbral"]
 clientes = cargar_clientes_actuales()
 COLUMNAS_FORMULARIO = clientes.columns.drop(ID).tolist()
+
+
+def mostrar_grafico(grafico, width="stretch"):
+    """Muestra un gráfico de Altair con fondo transparente, para que tome el de su tarjeta."""
+    st.altair_chart(grafico.properties(background="transparent"), width=width)
+
+
+def tarjeta(nombre):
+    """Contenedor con borde. La clave le da la clase CSS st-key-tarjeta_<nombre>, que
+    estilo.py usa para darle un fondo distinto del de la página."""
+    return st.container(border=True, key=f"tarjeta_{nombre}")
+
+
+def columnas_tarjeta(numero, nombre, vertical_alignment="top"):
+    """Como st.columns(numero, border=True), pero cada columna es una tarjeta con clave.
+    height="stretch" iguala la altura de las tarjetas de una misma fila."""
+    tarjetas = []
+    for posicion, columna in enumerate(st.columns(numero, vertical_alignment=vertical_alignment)):
+        with columna:
+            tarjetas.append(st.container(
+                border=True, key=f"tarjeta_{nombre}_{posicion}", height="stretch",
+            ))
+    return tarjetas
 
 
 def clave(columna):
@@ -241,51 +267,15 @@ def simular_altas():
     st.session_state["sim_ultima_accion"] = ("altas", n)
 
 
-def diagrama_arquitectura():
-    """Devuelve el diagrama del proyecto en lenguaje DOT de Graphviz.
-    Cada nodo es 'id [label="..."]' y cada flecha 'origen -> destino'."""
-    nodos = textos["arquitectura"]
-    nodos_databricks = [
-        "datos", "bronze", "silver", "gold", "entrenamiento", "challenger",
-        "mlflow", "registro", "batch", "serving", "exportacion",
-    ]
-    flechas = [
-        ("datos", "bronze"), ("bronze", "silver"), ("silver", "gold"),
-        ("gold", "entrenamiento"), ("gold", "challenger"),
-        ("entrenamiento", "mlflow"), ("challenger", "mlflow"), ("mlflow", "registro"),
-        ("registro", "batch"), ("registro", "serving"), ("registro", "exportacion"),
-        ("exportacion", "app"),
-    ]
-    # El paquete churn alimenta la capa gold y la app: flechas discontinuas
-    flechas_paquete = [("paquete", "gold"), ("paquete", "app")]
+def formatear_porcentaje(valor, decimales=1):
+    """Porcentaje con el separador decimal y el símbolo de cada idioma: 62,0 % o 62.0%."""
+    numero = f"{valor * 100:.{decimales}f}".replace(".", textos["separador_decimal"])
+    return numero + textos["simbolo_porcentaje"]
 
-    lineas = [
-        "digraph {",
-        'rankdir=LR; bgcolor="transparent";',
-        f'node [shape=box, style="rounded,filled", fillcolor="{COLOR_DIAGRAMA_FONDO}", '
-        f'color="{COLOR_DIAGRAMA_BORDE}", fontcolor="{COLOR_DIAGRAMA_TEXTO}", '
-        'fontname="sans-serif", fontsize=13];',
-        f'edge [color="{COLOR_DIAGRAMA_LINEAS}"];',
-        "subgraph cluster_databricks {",
-        f'label="{nodos["grupo_databricks"]}"; fontcolor="{COLOR_DIAGRAMA_LINEAS}"; color="{COLOR_DIAGRAMA_LINEAS}"; style="dashed,rounded";',
-    ]
-    for nodo in nodos_databricks:
-        lineas.append(f'{nodo} [label="{nodos[nodo]}"];')
-    lineas.append("}")
-    lineas.append("subgraph cluster_streamlit {")
-    lineas.append(
-        f'label="{nodos["grupo_streamlit"]}"; fontcolor="{COLOR_DIAGRAMA_LINEAS}"; color="{COLOR_DIAGRAMA_LINEAS}"; style="dashed,rounded";'
-    )
-    lineas.append(f'app [label="{nodos["app"]}"];')
-    lineas.append("}")
-    lineas.append(f'paquete [label="{nodos["paquete"]}"];')
 
-    for origen, destino in flechas:
-        lineas.append(f"{origen} -> {destino};")
-    for origen, destino in flechas_paquete:
-        lineas.append(f"{origen} -> {destino} [style=dashed];")
-    lineas.append("}")
-    return "\n".join(lineas)
+def formatear_decimal(valor, decimales):
+    """Número con el separador decimal de cada idioma."""
+    return f"{valor:.{decimales}f}".replace(".", textos["separador_decimal"])
 
 
 def formatear_valor(valor):
@@ -450,62 +440,150 @@ def grafico_challengers(folds):
     return banda + cero + marcas
 
 
-def grafico_tasa_barras(tabla, referencia, titulo_x, etiquetas=None, horizontal=False):
-    """Barras con la tasa de baja de cada grupo y una línea discontinua con la tasa de referencia.
-    etiquetas traduce cada grupo para mostrarlo; si no se pasa, se usa mostrar_valor."""
-    datos = tabla.copy()
+def posicion_respecto(tasas, referencia):
+    """Para cada tasa, si queda por encima o por debajo de la referencia (texto de la leyenda)."""
+    posiciones = []
+    for tasa in tasas:
+        if tasa > referencia:
+            posiciones.append(textos["exp_por_encima"])
+        else:
+            posiciones.append(textos["exp_por_debajo"])
+    return posiciones
+
+
+def escala_posicion():
+    """Naranja por encima de la referencia (más bajas) y azul por debajo, como en el resto de la app."""
+    return alt.Scale(
+        domain=[textos["exp_por_encima"], textos["exp_por_debajo"]],
+        range=[COLOR_RIESGO, COLOR_SIN_RIESGO],
+    )
+
+
+def capa_referencia(referencia, etiqueta, horizontal):
+    """Línea discontinua de la tasa de referencia, con su nombre escrito junto a ella.
+    horizontal=True es para gráficos con las categorías en el eje vertical."""
+    datos = pd.DataFrame({"referencia": [referencia], "etiqueta": [etiqueta]})
+    if horizontal:
+        linea = alt.Chart(datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(
+            x="referencia:Q",
+        )
+        texto = alt.Chart(datos).mark_text(
+            align="right", baseline="top", dx=-6, dy=2, fontSize=12, color=COLOR_REFERENCIA,
+        ).encode(x="referencia:Q", y=alt.value(0), text="etiqueta:N")
+    else:
+        linea = alt.Chart(datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(
+            y="referencia:Q",
+        )
+        # La etiqueta va encima del gráfico, a la derecha, para que ninguna barra la tape;
+        # los guiones imitan la línea discontinua
+        datos["etiqueta"] = "- - " + datos["etiqueta"]
+        texto = alt.Chart(datos).mark_text(
+            align="right", baseline="bottom", dy=-6, fontSize=12, color=COLOR_REFERENCIA,
+        ).encode(x=alt.value("width"), y=alt.value(0), text="etiqueta:N")
+    return linea + texto
+
+
+def nombres_de_grupos(grupos, etiquetas):
+    """Nombre que se muestra para cada grupo: de etiquetas si se pasan, si no traducido."""
     nombres = []
-    for grupo in datos["grupo"]:
+    for grupo in grupos:
         if etiquetas is None:
             nombres.append(str(mostrar_valor(grupo)))
         else:
             nombres.append(etiquetas[grupo])
-    datos["nombre"] = nombres
-    datos = datos[["nombre", "tasa", "clientes"]]
-
-    eje_tasa = alt.Axis(format="%")
-    tooltip = [
-        alt.Tooltip("nombre:N", title=titulo_x),
-        alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
-        alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
-    ]
-    referencia_datos = pd.DataFrame({"referencia": [referencia]})
-    if horizontal:
-        barras = alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
-            x=alt.X("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
-            y=alt.Y("nombre:N", sort="-x", title=None),
-            tooltip=tooltip,
-        )
-        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(x="referencia:Q")
-    else:
-        barras = alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
-            x=alt.X("nombre:N", sort=None, title=titulo_x, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
-            tooltip=tooltip,
-        )
-        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(y="referencia:Q")
-    return barras + linea
+    return nombres
 
 
-def grafico_tasa_antiguedad(tabla, referencia):
-    """Tasa de baja mes a mes de antigüedad, con la tasa global como referencia."""
-    datos = tabla.rename(columns={"grupo": "tenure"})
-    linea = alt.Chart(datos).mark_line(color=COLOR_DATOS, point=True).encode(
-        x=alt.X("tenure:Q", title=textos["campos"]["tenure"]),
+def grafico_tasa_barras(tabla, referencia, etiqueta_referencia, titulo_x, etiquetas=None):
+    """Barras verticales con la tasa de baja de cada grupo, coloreadas según queden por encima
+    o por debajo de la referencia, y la línea de referencia etiquetada."""
+    datos = tabla.copy()
+    datos["nombre"] = nombres_de_grupos(datos["grupo"], etiquetas)
+    datos["posicion"] = posicion_respecto(datos["tasa"], referencia)
+    datos = datos[["nombre", "tasa", "clientes", "posicion"]]
+
+    barras = alt.Chart(datos).mark_bar().encode(
+        x=alt.X("nombre:N", sort=None, title=titulo_x, axis=alt.Axis(labelAngle=0)),
         y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=alt.Axis(format="%")),
+        color=alt.Color(
+            "posicion:N", title=textos["exp_posicion"], scale=escala_posicion(),
+            legend=alt.Legend(orient="bottom", title=None, labelLimit=400),
+        ),
+        tooltip=[
+            alt.Tooltip("nombre:N", title=titulo_x),
+            alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
+            alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
+        ],
+    )
+    return barras + capa_referencia(referencia, etiqueta_referencia, horizontal=False)
+
+
+def grafico_tasa_puntos(tabla, referencia, etiqueta_referencia, titulo):
+    """Gráfico de puntos horizontal: cada grupo es un punto unido por un trazo a la referencia,
+    así se lee a la vez la tasa y la distancia a la media."""
+    datos = tabla.copy()
+    datos["nombre"] = nombres_de_grupos(datos["grupo"], None)
+    datos["posicion"] = posicion_respecto(datos["tasa"], referencia)
+    datos["referencia"] = referencia
+    datos = datos[["nombre", "tasa", "clientes", "posicion", "referencia"]]
+
+    eje_y = alt.Y(
+        "nombre:N", title=None,
+        sort=alt.EncodingSortField(field="tasa", order="descending"),
+        axis=alt.Axis(labelLimit=320),
+    )
+    color = alt.Color(
+        "posicion:N", title=textos["exp_posicion"], scale=escala_posicion(),
+        legend=alt.Legend(orient="bottom", title=None, labelLimit=400),
+    )
+    trazos = alt.Chart(datos).mark_rule(strokeWidth=3).encode(
+        x=alt.X("referencia:Q", title=textos["exp_eje_tasa"], axis=alt.Axis(format="%")),
+        x2="tasa:Q",
+        y=eje_y,
+        color=color,
+    )
+    puntos = alt.Chart(datos).mark_circle(size=180, opacity=1).encode(
+        x="tasa:Q",
+        y=eje_y,
+        color=color,
+        tooltip=[
+            alt.Tooltip("nombre:N", title=titulo),
+            alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
+            alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
+        ],
+    )
+    capas = trazos + puntos + capa_referencia(referencia, etiqueta_referencia, horizontal=True)
+    return capas.properties(height=alt.Step(44))
+
+
+def grafico_tasa_antiguedad(tabla, referencia, etiqueta_referencia):
+    """Tasa de baja mes a mes de antigüedad: una línea con un punto por mes, coloreado según
+    quede por encima o por debajo de la media de la empresa."""
+    datos = tabla.rename(columns={"grupo": "tenure"})
+    datos["posicion"] = posicion_respecto(datos["tasa"], referencia)
+
+    eje_x = alt.X("tenure:Q", title=textos["campos"]["tenure"], scale=alt.Scale(domain=[0, 72]))
+    eje_y = alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=alt.Axis(format="%"))
+    linea = alt.Chart(datos).mark_line(color=COLOR_REFERENCIA).encode(x=eje_x, y=eje_y)
+    puntos = alt.Chart(datos).mark_circle(size=45, opacity=1).encode(
+        x=eje_x,
+        y=eje_y,
+        color=alt.Color(
+            "posicion:N", title=textos["exp_posicion"], scale=escala_posicion(),
+            legend=alt.Legend(orient="bottom", title=None, labelLimit=400),
+        ),
         tooltip=[
             alt.Tooltip("tenure:Q", title=textos["campos"]["tenure"]),
             alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
             alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
         ],
     )
-    referencia_datos = pd.DataFrame({"referencia": [referencia]})
-    global_ = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(y="referencia:Q")
-    return linea + global_
+    return linea + puntos + capa_referencia(referencia, etiqueta_referencia, horizontal=False)
 
 
-def grafico_servicios(tabla):
-    """Puntos de diferencia de tasa de baja entre no tener y tener cada servicio."""
+def grafico_servicios(tabla, maximo):
+    """Barras con los puntos de diferencia de tasa de baja entre no tener y tener cada servicio.
+    maximo fija el eje para que los gráficos de soporte y ocio se puedan comparar."""
     datos = tabla.copy()
     nombres = []
     for servicio in datos["servicio"]:
@@ -514,10 +592,13 @@ def grafico_servicios(tabla):
     datos["puntos"] = datos["diferencia"] * 100
     datos = datos[["nombre", "puntos"]]
     return alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
-        x=alt.X("puntos:Q", title=textos["exp_servicios_eje"]),
-        y=alt.Y("nombre:N", sort="-x", title=None),
+        x=alt.X(
+            "puntos:Q", title=textos["exp_servicios_eje"], scale=alt.Scale(domain=[0, maximo]),
+        ),
+        # minExtent reserva el mismo hueco para las etiquetas en los dos gráficos y alinea los ejes
+        y=alt.Y("nombre:N", sort="-x", title=None, axis=alt.Axis(labelLimit=320, minExtent=190)),
         tooltip=[alt.Tooltip("puntos:Q", title=textos["exp_servicios_eje"], format=".1f")],
-    )
+    ).properties(height=alt.Step(34))
 
 
 def texto_estado(en_riesgo):
@@ -576,7 +657,7 @@ if "sim_clientes" not in st.session_state:
 
 # Cabecera: título a la izquierda y barra de iconos a la derecha. La barra se rellena
 # primero porque el idioma elegido decide en qué idioma se escribe el título.
-col_titulo, col_barra = st.columns([3, 1], vertical_alignment="center")
+col_titulo, col_barra = st.columns([3, 2], vertical_alignment="center")
 
 with col_barra:
     with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center"):
@@ -591,6 +672,7 @@ with col_barra:
             label_visibility="collapsed",
         )
         textos = TEXTOS[idioma]
+        campos = textos["campos"]
 
         with st.popover("", icon=":material/info:", help=textos["ayuda_info"]):
             st.markdown(textos["sobre_proyecto"])
@@ -598,14 +680,18 @@ with col_barra:
             st.markdown(f"**{textos['ficha_modelo']}**")
             st.markdown(f"{textos['ficha_nombre']}: `{metadatos['model_name']}`")
             st.markdown(f"{textos['ficha_version']}: {metadatos['version']}")
-            st.markdown(f"{textos['ficha_umbral']}: {umbral:.0%}")
+            st.markdown(f"{textos['ficha_umbral']}: {formatear_porcentaje(umbral, 0)}")
             st.markdown(f"{textos['ficha_fecha']}: {fecha_exportado}")
 
         st.link_button("", URL_REPO, icon=":material/code:", help=textos["enlace_repo"])
 
 with col_titulo:
-    st.title(textos["titulo"])
-    st.write(textos["subtitulo"])
+    st.markdown(f":material/cell_tower: **{textos['titulo']}**")
+
+st.html(
+    cabecera_html(textos["cabecera_etiqueta"], textos["cabecera_titulo"], textos["resumen_problema"]),
+    unsafe_allow_javascript=True,
+)
 
 (
     pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion,
@@ -620,8 +706,6 @@ with col_titulo:
 ])
 
 with pestana_resumen:
-    st.write(textos["resumen_problema"])
-
     silver = cargar_clientes_silver()
     tasa_baja = silver["churn"].mean()
     test = puntuar_test(modelo, umbral)
@@ -629,36 +713,45 @@ with pestana_resumen:
     # Un modelo al azar tiene una PR-AUC igual a la proporción de bajas
     base_aleatoria = test["churn"].mean()
 
-    col_clientes, col_tasa, col_pr_auc, col_umbral = st.columns(4, border=True)
-    col_clientes.metric(textos["resumen_kpi_clientes"], len(silver))
-    col_tasa.metric(textos["resumen_kpi_tasa"], f"{tasa_baja:.1%}")
-    col_pr_auc.metric(
-        textos["resumen_kpi_pr_auc"], f"{pr_auc_test:.3f}",
-        help=textos["resumen_ayuda_pr_auc"].format(n=len(test), base=f"{base_aleatoria:.3f}"),
+    fila_arriba = columnas_tarjeta(2, "bloque_11")
+    fila_arriba[0].metric(textos["resumen_kpi_clientes"], len(silver))
+    fila_arriba[1].metric(textos["resumen_kpi_tasa"], formatear_porcentaje(tasa_baja))
+    fila_abajo = columnas_tarjeta(2, "bloque_12")
+    fila_abajo[0].metric(
+        textos["resumen_kpi_pr_auc"], formatear_decimal(pr_auc_test, 3),
+        help=textos["resumen_ayuda_pr_auc"].format(
+            n=len(test), base=formatear_decimal(base_aleatoria, 3),
+        ),
     )
-    col_umbral.metric(textos["ficha_umbral"], f"{umbral:.0%}")
+    fila_abajo[1].metric(textos["ficha_umbral"], formatear_porcentaje(umbral, 0))
 
     st.subheader(textos["resumen_arquitectura"])
-    st.graphviz_chart(diagrama_arquitectura(), width="stretch")
-    st.caption(textos["resumen_arquitectura_nota"])
+    for numero, (icono, etapa) in enumerate(zip(ICONOS_ETAPAS, textos["etapas"])):
+        with tarjeta(f"etapa_{numero}"):
+            st.markdown(f"#### {icono} {etapa['titulo']}")
+            st.write(etapa["texto"])
+            with st.container(horizontal=True):
+                for tecnologia in etapa["tecnologias"].split(" · "):
+                    st.badge(tecnologia, color="green")
 
-    col_decisiones, col_uso = st.columns([3, 2])
-    with col_decisiones:
-        st.subheader(textos["resumen_decisiones"])
-        st.markdown(textos["resumen_decisiones_lista"].format(
-            tasa=f"{tasa_baja:.1%}",
-            umbral=f"{umbral:.2f}".replace(".", textos["separador_decimal"]),
-        ))
-    with col_uso:
-        st.subheader(textos["resumen_uso"])
-        st.markdown(textos["resumen_uso_lista"])
+    st.subheader(textos["resumen_decisiones"])
+    decisiones = textos["decisiones"]
+    for inicio in range(0, len(decisiones), 2):
+        fila = columnas_tarjeta(2, f"decision_{inicio}")
+        for columna, decision in zip(fila, decisiones[inicio:inicio + 2]):
+            with columna:
+                st.markdown(f"**{decision['titulo'].format(umbral=formatear_decimal(umbral, 2))}**")
+                st.write(decision["texto"].format(tasa=formatear_porcentaje(tasa_baja)))
+
+    st.subheader(textos["resumen_uso"])
+    st.markdown(textos["resumen_uso_lista"])
 
 with pestana_cliente:
     st.button(textos["boton_azar"], on_click=cargar_cliente_azar, args=(clientes,))
     st.caption(textos["cliente_cargado"].format(customer_id=st.session_state["form_customer_id"]))
 
-    campos = textos["campos"]
-    col_personales, col_contrato, col_servicios = st.columns(3, border=True)
+    # Dos tarjetas de la misma altura (6 campos cada una) y debajo la de internet
+    col_personales, col_contrato = columnas_tarjeta(2, "bloque_14")
 
     with col_personales:
         st.markdown(f"**{textos['grupo_personales']}**")
@@ -667,6 +760,20 @@ with pestana_cliente:
                 campos[columna], OPCIONES[columna],
                 key=clave(columna), format_func=mostrar_valor,
             )
+        st.markdown(f"**{textos['grupo_telefonia']}**")
+        st.selectbox(
+            campos["phone_service"], OPCIONES["phone_service"],
+            key=clave("phone_service"), format_func=mostrar_valor, on_change=ajustar_lineas,
+        )
+        sin_telefono = st.session_state[clave("phone_service")] == "No"
+        if sin_telefono:
+            opciones_lineas = ["No phone service"]
+        else:
+            opciones_lineas = SI_NO
+        st.selectbox(
+            campos["multiple_lines"], opciones_lineas,
+            key=clave("multiple_lines"), format_func=mostrar_valor, disabled=sin_telefono,
+        )
 
     with col_contrato:
         st.markdown(f"**{textos['grupo_contrato']}**")
@@ -693,22 +800,8 @@ with pestana_cliente:
             disabled=st.session_state[clave("tenure")] == 0,
         )
 
-    with col_servicios:
+    with tarjeta("bloque_2"):
         st.markdown(f"**{textos['grupo_servicios']}**")
-        st.selectbox(
-            campos["phone_service"], OPCIONES["phone_service"],
-            key=clave("phone_service"), format_func=mostrar_valor, on_change=ajustar_lineas,
-        )
-        sin_telefono = st.session_state[clave("phone_service")] == "No"
-        if sin_telefono:
-            opciones_lineas = ["No phone service"]
-        else:
-            opciones_lineas = SI_NO
-        st.selectbox(
-            campos["multiple_lines"], opciones_lineas,
-            key=clave("multiple_lines"), format_func=mostrar_valor, disabled=sin_telefono,
-        )
-
         st.selectbox(
             campos["internet_service"], OPCIONES["internet_service"],
             key=clave("internet_service"), format_func=mostrar_valor,
@@ -719,13 +812,20 @@ with pestana_cliente:
             opciones_servicio = ["No internet service"]
         else:
             opciones_servicio = SI_NO
-        for servicio in SERVICIOS_INTERNET:
-            st.selectbox(
-                campos[servicio], opciones_servicio,
-                key=clave(servicio), format_func=mostrar_valor, disabled=sin_internet,
-            )
+        col_servicios_izquierda, col_servicios_derecha = st.columns(2)
+        for posicion, servicio in enumerate(SERVICIOS_INTERNET):
+            # Tres servicios en cada columna
+            if posicion < 3:
+                columna_servicio = col_servicios_izquierda
+            else:
+                columna_servicio = col_servicios_derecha
+            with columna_servicio:
+                st.selectbox(
+                    campos[servicio], opciones_servicio,
+                    key=clave(servicio), format_func=mostrar_valor, disabled=sin_internet,
+                )
 
-    if st.button(textos["boton_calcular"], type="primary"):
+    if st.button(textos["boton_calcular"], type="primary", key="primario_calcular"):
         cliente = construir_cliente()
         tenure = cliente["tenure"].iloc[0]
         total = cliente["total_charges"].iloc[0]
@@ -741,29 +841,32 @@ with pestana_cliente:
             else:
                 frase = textos["frase_sin_riesgo"]
 
-            with st.container(border=True):
-                st.metric(textos["probabilidad"], f"{probabilidad:.1%}")
+            with tarjeta("bloque_3"):
+                st.metric(textos["probabilidad"], formatear_porcentaje(probabilidad))
                 st.markdown(etiqueta_riesgo(en_riesgo), unsafe_allow_html=True)
-                st.write(frase.format(probabilidad=f"{probabilidad:.1%}", umbral=f"{umbral:.0%}"))
+                st.write(frase.format(
+                    probabilidad=formatear_porcentaje(probabilidad),
+                    umbral=formatear_porcentaje(umbral, 0),
+                ))
 
-            with st.container(border=True):
+            with tarjeta("bloque_4"):
                 st.markdown(f"**{textos['explicacion_titulo']}**")
                 st.caption(textos["explicacion_nota"].format(n=N_EXPLICACION))
                 tabla = contribuciones(cliente, modelo, medias_entrenamiento(modelo))
-                st.altair_chart(grafico_contribuciones(tabla), width="stretch")
+                mostrar_grafico(grafico_contribuciones(tabla), width="stretch")
 
 with pestana_riesgo:
     puntuados = puntuar_clientes_actuales(modelo, umbral)
 
     n_actuales = len(puntuados)
     n_riesgo = int(puntuados["en_riesgo"].sum())
-    col_actuales, col_riesgo, col_porcentaje = st.columns(3, border=True)
+    col_actuales, col_riesgo, col_porcentaje = columnas_tarjeta(3, "bloque_15")
     col_actuales.metric(textos["indicador_actuales"], n_actuales)
     col_riesgo.metric(textos["indicador_riesgo"], n_riesgo)
-    col_porcentaje.metric(textos["indicador_porcentaje"], f"{n_riesgo / n_actuales:.1%}")
+    col_porcentaje.metric(textos["indicador_porcentaje"], formatear_porcentaje(n_riesgo / n_actuales))
 
     # Filtros: por defecto están marcadas todas las opciones, es decir, no se filtra nada
-    with st.container(border=True):
+    with tarjeta("bloque_5"):
         seleccion = {}
         for columna in COLUMNAS_FILTRO:
             seleccion[columna] = st.pills(
@@ -784,46 +887,42 @@ with pestana_riesgo:
         st.info(textos["sin_resultados"])
     else:
         st.caption(textos["clientes_filtrados"].format(n=len(filtrados)))
-        col_tabla, col_grafico = st.columns([3, 2])
 
-        with col_tabla:
-            # La tabla muestra valores traducidos; la descarga, los valores originales
-            tabla = filtrados[COLUMNAS_TABLA].copy()
-            tabla["en_riesgo"] = tabla["en_riesgo"].map(texto_estado)
-            for columna in COLUMNAS_FILTRO:
-                tabla[columna] = tabla[columna].map(mostrar_valor)
+        # La tabla muestra valores traducidos; la descarga, los valores originales
+        tabla = filtrados[COLUMNAS_TABLA].copy()
+        tabla["en_riesgo"] = tabla["en_riesgo"].map(texto_estado)
+        for columna in COLUMNAS_FILTRO:
+            tabla[columna] = tabla[columna].map(mostrar_valor)
 
-            configuracion = {
-                ID: st.column_config.TextColumn(textos["columna_cliente"]),
-                "churn_probability": st.column_config.ProgressColumn(
-                    textos["probabilidad"], format="percent", min_value=0.0, max_value=1.0,
-                ),
-                "en_riesgo": st.column_config.TextColumn(textos["columna_estado"]),
-                "monthly_charges": st.column_config.NumberColumn(
-                    campos["monthly_charges"], format="%.2f",
-                ),
-            }
-            for columna in ["contract", "tenure", "internet_service", "payment_method"]:
-                configuracion[columna] = st.column_config.Column(campos[columna])
+        configuracion = {
+            ID: st.column_config.TextColumn(textos["columna_cliente"]),
+            "churn_probability": st.column_config.ProgressColumn(
+                textos["probabilidad"], format="percent", min_value=0.0, max_value=1.0,
+            ),
+            "en_riesgo": st.column_config.TextColumn(textos["columna_estado"]),
+            "monthly_charges": st.column_config.NumberColumn(
+                campos["monthly_charges"], format="%.2f",
+            ),
+        }
+        for columna in ["contract", "tenure", "internet_service", "payment_method"]:
+            configuracion[columna] = st.column_config.Column(campos[columna])
 
-            st.dataframe(tabla, hide_index=True, column_config=configuracion)
-            st.download_button(
-                textos["boton_descargar"],
-                data=filtrados.to_csv(index=False),
-                file_name=textos["nombre_descarga"],
-                mime="text/csv",
-                on_click="ignore",
-            )
-
-        with col_grafico:
-            st.altair_chart(grafico_probabilidades(filtrados), width="stretch")
+        st.dataframe(tabla, hide_index=True, column_config=configuracion)
+        st.download_button(
+            textos["boton_descargar"],
+            data=filtrados.to_csv(index=False),
+            file_name=textos["nombre_descarga"],
+            mime="text/csv",
+            on_click="ignore",
+        )
+        mostrar_grafico(grafico_probabilidades(filtrados), width="stretch")
 
 with pestana_simulacion:
     st.caption(textos["sim_alcance"])
 
-    col_mes, col_altas, col_reiniciar = st.columns(3, border=True, vertical_alignment="bottom")
+    col_mes, col_altas, col_reiniciar = columnas_tarjeta(3, "bloque_16", vertical_alignment="bottom")
     with col_mes:
-        st.button(textos["boton_pasar_mes"], on_click=simular_un_mes, type="primary")
+        st.button(textos["boton_pasar_mes"], on_click=simular_un_mes, type="primary", key="primario_mes")
     with col_altas:
         st.number_input(
             textos["sim_n_altas"], min_value=0, max_value=500, value=100, step=10,
@@ -834,10 +933,11 @@ with pestana_simulacion:
         st.button(textos["boton_reiniciar"], on_click=reiniciar_simulacion, args=(clientes,))
 
     sim_puntuados = st.session_state["sim_puntuados"]
-    col_ind_mes, col_ind_total, col_ind_riesgo, col_ind_entran, col_ind_salen = st.columns(5, border=True)
+    col_ind_mes, col_ind_total, col_ind_riesgo = columnas_tarjeta(3, "bloque_17")
     col_ind_mes.metric(textos["ind_mes"], st.session_state["sim_mes"])
     col_ind_total.metric(textos["ind_total"], len(sim_puntuados))
     col_ind_riesgo.metric(textos["indicador_riesgo"], int(sim_puntuados["en_riesgo"].sum()))
+    col_ind_entran, col_ind_salen = columnas_tarjeta(2, "bloque_18")
 
     # Antes de la primera acción no hay estado anterior con el que comparar
     ultima_accion = st.session_state["sim_ultima_accion"]
@@ -857,56 +957,121 @@ with pestana_simulacion:
 with pestana_exploracion:
     silver = cargar_clientes_silver()
     tasa_global = silver["churn"].mean()
+    referencia_empresa = textos["exp_ref_empresa"].format(tasa=formatear_porcentaje(tasa_global))
+    fibra = silver[silver["internet_service"] == "Fiber optic"].copy()
+    tasa_fibra = fibra["churn"].mean()
+    referencia_fibra = textos["exp_ref_fibra"].format(tasa=formatear_porcentaje(tasa_fibra))
     st.caption(textos["exp_intro"].format(n=len(silver)))
 
-    with st.container(border=True):
-        st.markdown(f"**{textos['exp_tenure_titulo']}**")
-        st.altair_chart(
-            grafico_tasa_antiguedad(tasa_por_grupo(silver, "tenure"), tasa_global),
+    # Cada sección: título, una cifra destacada sacada de los datos, el gráfico y la conclusión
+    with tarjeta("exp_antiguedad"):
+        st.subheader(textos["exp_tenure_titulo"])
+        por_antiguedad = tasa_por_grupo(silver, "tenure")
+        primer_mes = por_antiguedad.loc[por_antiguedad["grupo"] == 1, "tasa"].iloc[0]
+        st.metric(textos["exp_dest_tenure"], formatear_porcentaje(primer_mes))
+        mostrar_grafico(
+            grafico_tasa_antiguedad(por_antiguedad, tasa_global, referencia_empresa),
             width="stretch",
         )
         st.markdown(textos["exp_tenure_texto"])
 
-    col_contrato, col_fibra = st.columns(2, border=True)
-    with col_contrato:
-        st.markdown(f"**{textos['exp_contrato_titulo']}**")
-        st.altair_chart(
-            grafico_tasa_barras(tasa_por_grupo(silver, "contract"), tasa_global, campos["contract"]),
+    with tarjeta("exp_contrato"):
+        st.subheader(textos["exp_contrato_titulo"])
+        por_contrato = tasa_por_grupo(silver, "contract")
+        mensual_tasa = por_contrato.loc[por_contrato["grupo"] == "Month-to-month", "tasa"].iloc[0]
+        st.metric(textos["exp_dest_contrato"], formatear_porcentaje(mensual_tasa))
+        mostrar_grafico(
+            grafico_tasa_barras(por_contrato, tasa_global, referencia_empresa, campos["contract"]),
             width="stretch",
         )
         st.markdown(textos["exp_contrato_texto"])
-    with col_fibra:
-        st.markdown(f"**{textos['exp_fibra_titulo']}**")
-        fibra = silver[silver["internet_service"] == "Fiber optic"].copy()
+
+    with tarjeta("exp_simpson"):
+        st.subheader(textos["exp_simpson_titulo"])
+        # Misma variable (cuota mensual) mirada en todos los clientes y solo en fibra
+        por_cuota = tasa_por_tramos(silver, "monthly_charges", 5)
+        por_cuota_fibra = tasa_por_tramos(fibra, "monthly_charges", 4)
+        st.metric(
+            textos["exp_dest_simpson"],
+            f"{formatear_porcentaje(por_cuota_fibra['tasa'].iloc[0])} / "
+            f"{formatear_porcentaje(por_cuota_fibra['tasa'].iloc[-1])}",
+        )
+        st.caption(textos["exp_simpson_todos"])
+        mostrar_grafico(
+            grafico_tasa_barras(por_cuota, tasa_global, referencia_empresa, textos["exp_simpson_eje"]),
+            width="stretch",
+        )
+        st.caption(textos["exp_simpson_fibra"])
+        mostrar_grafico(
+            grafico_tasa_barras(por_cuota_fibra, tasa_fibra, referencia_fibra, textos["exp_simpson_eje"]),
+            width="stretch",
+        )
+        st.markdown(textos["exp_simpson_texto"])
+
+    with tarjeta("exp_fibra"):
+        st.subheader(textos["exp_fibra_titulo"])
         fibra["n_extras"] = numero_de_extras(fibra, SERVICIOS_INTERNET)
+        por_extras = tasa_por_grupo(fibra, "n_extras")
+        sin_extras = por_extras.loc[por_extras["grupo"] == 0, "tasa"].iloc[0]
+        st.metric(textos["exp_dest_fibra"], formatear_porcentaje(sin_extras))
         etiquetas_extras = {}
         for numero in range(len(SERVICIOS_INTERNET) + 1):
             etiquetas_extras[numero] = str(numero)
-        st.altair_chart(
+        mostrar_grafico(
             grafico_tasa_barras(
-                tasa_por_grupo(fibra, "n_extras"), fibra["churn"].mean(),
+                por_extras, tasa_fibra, referencia_fibra,
                 textos["exp_fibra_eje"], etiquetas=etiquetas_extras,
             ),
             width="stretch",
         )
         st.markdown(textos["exp_fibra_texto"])
 
-    col_pago, col_servicios = st.columns(2, border=True)
-    with col_pago:
-        st.markdown(f"**{textos['exp_pago_titulo']}**")
+    with tarjeta("exp_pago"):
+        st.subheader(textos["exp_pago_titulo"])
         mensual = silver[silver["contract"] == "Month-to-month"]
-        st.altair_chart(
-            grafico_tasa_barras(
-                tasa_por_grupo(mensual, "payment_method"), mensual["churn"].mean(),
-                campos["payment_method"], horizontal=True,
+        por_pago_mensual = tasa_por_grupo(mensual, "payment_method")
+        cheque = por_pago_mensual.loc[por_pago_mensual["grupo"] == "Electronic check", "tasa"].iloc[0]
+        st.metric(textos["exp_dest_pago"], formatear_porcentaje(cheque))
+        st.markdown(textos["exp_pago_contexto"])
+        # La misma comparación en bruto y a igualdad de contrato
+        st.caption(textos["exp_pago_todos"])
+        mostrar_grafico(
+            grafico_tasa_puntos(
+                tasa_por_grupo(silver, "payment_method"), tasa_global, referencia_empresa,
+                campos["payment_method"],
+            ),
+            width="stretch",
+        )
+        st.caption(textos["exp_pago_mensual"])
+        tasa_mensual = mensual["churn"].mean()
+        mostrar_grafico(
+            grafico_tasa_puntos(
+                por_pago_mensual, tasa_mensual,
+                textos["exp_ref_mensual"].format(tasa=formatear_porcentaje(tasa_mensual)),
+                campos["payment_method"],
             ),
             width="stretch",
         )
         st.markdown(textos["exp_pago_texto"])
-    with col_servicios:
-        st.markdown(f"**{textos['exp_servicios_titulo']}**")
-        st.altair_chart(
-            grafico_servicios(diferencia_por_servicio(silver, SERVICIOS_INTERNET)),
+
+    with tarjeta("exp_servicios"):
+        st.subheader(textos["exp_servicios_titulo"])
+        diferencias = diferencia_por_servicio(silver, SERVICIOS_INTERNET)
+        seguridad = diferencias.loc[diferencias["servicio"] == "online_security", "diferencia"].iloc[0]
+        st.metric(
+            textos["exp_dest_servicios"],
+            textos["exp_dest_puntos"].format(puntos=formatear_decimal(seguridad * 100, 0)),
+        )
+        # Mismo eje en los dos gráficos para poder comparar soporte con ocio
+        maximo = diferencias["diferencia"].max() * 100 * 1.1
+        st.caption(textos["exp_servicios_soporte"])
+        mostrar_grafico(
+            grafico_servicios(diferencias[diferencias["servicio"].isin(SERVICIOS_SOPORTE)], maximo),
+            width="stretch",
+        )
+        st.caption(textos["exp_servicios_ocio"])
+        mostrar_grafico(
+            grafico_servicios(diferencias[diferencias["servicio"].isin(SERVICIOS_OCIO)], maximo),
             width="stretch",
         )
         st.markdown(textos["exp_servicios_texto"])
@@ -916,20 +1081,19 @@ with pestana_exploracion:
 
 with pestana_modelo:
     test = puntuar_test(modelo, umbral)
-    st.caption(textos["modelo_intro"].format(n=len(test), umbral=f"{umbral:.2f}"))
+    st.caption(textos["modelo_intro"].format(n=len(test), umbral=formatear_decimal(umbral, 2)))
     umbral_prueba = st.slider(
         textos["modelo_slider"], min_value=0.05, max_value=0.95, value=float(umbral), step=0.05,
         key="umbral_prueba",
     )
     matriz = matriz_confusion(test["churn"], test["churn_probability"], umbral_prueba)
 
-    col_matriz, col_pr = st.columns([2, 3])
-    with col_matriz:
-        st.markdown(f"**{textos['modelo_matriz_titulo']}**")
-        fila_arriba = st.columns(2, border=True)
+    with tarjeta("bloque_6"):
+        st.subheader(textos["modelo_matriz_titulo"])
+        fila_arriba = columnas_tarjeta(2, "bloque_19")
         fila_arriba[0].metric(textos["modelo_detectados"], matriz["detectados"])
         fila_arriba[1].metric(textos["modelo_falsas"], matriz["falsas_alarmas"])
-        fila_abajo = st.columns(2, border=True)
+        fila_abajo = columnas_tarjeta(2, "bloque_20")
         fila_abajo[0].metric(textos["modelo_perdidos"], matriz["perdidos"])
         fila_abajo[1].metric(textos["modelo_descartados"], matriz["bien_descartados"])
 
@@ -939,26 +1103,29 @@ with pestana_modelo:
         if marcados > 0:
             precision = matriz["detectados"] / marcados
             st.markdown(textos["modelo_precision"].format(
-                p=f"{precision:.2f}", p100=round(precision * 100),
+                p=formatear_decimal(precision, 2), p100=round(precision * 100),
             ))
-        st.markdown(textos["modelo_recall"].format(r=f"{recall:.2f}", r100=round(recall * 100)))
+        st.markdown(textos["modelo_recall"].format(
+            r=formatear_decimal(recall, 2), r100=round(recall * 100),
+        ))
 
-    with col_pr:
-        st.markdown(f"**{textos['modelo_pr_titulo']}**")
-        st.altair_chart(grafico_precision_recall(test, umbral_prueba, matriz), width="stretch")
-        st.caption(textos["modelo_pr_nota"].format(base=f"{test['churn'].mean():.3f}"))
+    with tarjeta("bloque_7"):
+        st.subheader(textos["modelo_pr_titulo"])
+        mostrar_grafico(grafico_precision_recall(test, umbral_prueba, matriz), width="stretch")
+        st.caption(textos["modelo_pr_nota"].format(base=formatear_decimal(test["churn"].mean(), 3)))
 
-    col_ganancia, col_importancia = st.columns(2)
-    with col_ganancia:
-        st.markdown(f"**{textos['modelo_ganancia_titulo']}**")
-        st.altair_chart(grafico_ganancia(test, umbral_prueba), width="stretch")
+    with tarjeta("bloque_8"):
+        st.subheader(textos["modelo_ganancia_titulo"])
+        mostrar_grafico(grafico_ganancia(test, umbral_prueba), width="stretch")
         st.caption(textos["modelo_ganancia_nota"])
-    with col_importancia:
-        st.markdown(f"**{textos['modelo_importancia_titulo']}**")
-        st.altair_chart(grafico_importancia(importancia_test(modelo, umbral)), width="stretch")
+
+    with tarjeta("bloque_9"):
+        st.subheader(textos["modelo_importancia_titulo"])
+        mostrar_grafico(grafico_importancia(importancia_test(modelo, umbral)), width="stretch")
         st.caption(textos["modelo_importancia_nota"].format(n=N_IMPORTANCIA))
 
-    st.markdown(f"**{textos['modelo_challenger_titulo']}**")
-    st.altair_chart(grafico_challengers(cargar_challengers()), width="stretch")
-    st.caption(textos["modelo_challenger_nota"])
-    st.write(textos["modelo_challenger_llamadas"])
+    with tarjeta("bloque_10"):
+        st.subheader(textos["modelo_challenger_titulo"])
+        mostrar_grafico(grafico_challengers(cargar_challengers()), width="stretch")
+        st.caption(textos["modelo_challenger_nota"])
+        st.write(textos["modelo_challenger_llamadas"])
