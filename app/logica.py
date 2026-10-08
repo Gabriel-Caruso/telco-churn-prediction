@@ -186,3 +186,31 @@ def curva_ganancia(churn_real: pd.Series, probabilidad: pd.Series) -> pd.DataFra
         "contactados": np.concatenate([[0.0], contactados]),
         "capturadas": np.concatenate([[0.0], capturadas]),
     })
+
+
+def tasa_por_grupo(clientes: pd.DataFrame, columna: str) -> pd.DataFrame:
+    """Tasa de baja y número de clientes de cada valor de una columna.
+    Necesita la columna churn (formato silver completo)."""
+    agrupado = clientes.groupby(columna)[TARGET]
+    return pd.DataFrame({
+        "grupo": agrupado.mean().index,
+        "tasa": agrupado.mean().to_numpy(),
+        "clientes": agrupado.size().to_numpy(),
+    })
+
+
+def numero_de_extras(clientes: pd.DataFrame, servicios: list) -> pd.Series:
+    """Cuántos de los servicios indicados tiene contratados cada cliente."""
+    return (clientes[servicios] == "Yes").sum(axis=1)
+
+
+def diferencia_por_servicio(clientes: pd.DataFrame, servicios: list) -> pd.DataFrame:
+    """Para cada servicio, tasa de baja sin el servicio menos tasa con el servicio,
+    entre los clientes que pueden contratarlo (se excluye 'No internet service')."""
+    filas = []
+    for servicio in servicios:
+        tasa_sin = clientes.loc[clientes[servicio] == "No", TARGET].mean()
+        tasa_con = clientes.loc[clientes[servicio] == "Yes", TARGET].mean()
+        filas.append({"servicio": servicio, "diferencia": tasa_sin - tasa_con})
+    tabla = pd.DataFrame(filas)
+    return tabla.sort_values("diferencia", ascending=False, ignore_index=True)

@@ -15,8 +15,9 @@ sys.path.insert(0, str(CARPETA_APP.parent))
 
 from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
 from logica import (
-    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, importancia_global,
-    matriz_confusion, medias_transformadas, pasar_un_mes, puntuar,
+    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, diferencia_por_servicio,
+    importancia_global, matriz_confusion, medias_transformadas, numero_de_extras,
+    pasar_un_mes, puntuar, tasa_por_grupo,
 )
 from textos import TEXTOS
 
@@ -438,6 +439,76 @@ def grafico_challengers(folds):
     return banda + cero + marcas
 
 
+def grafico_tasa_barras(tabla, referencia, titulo_x, etiquetas=None, horizontal=False):
+    """Barras con la tasa de baja de cada grupo y una línea discontinua con la tasa de referencia.
+    etiquetas traduce cada grupo para mostrarlo; si no se pasa, se usa mostrar_valor."""
+    datos = tabla.copy()
+    nombres = []
+    for grupo in datos["grupo"]:
+        if etiquetas is None:
+            nombres.append(str(mostrar_valor(grupo)))
+        else:
+            nombres.append(etiquetas[grupo])
+    datos["nombre"] = nombres
+    datos = datos[["nombre", "tasa", "clientes"]]
+
+    eje_tasa = alt.Axis(format="%")
+    tooltip = [
+        alt.Tooltip("nombre:N", title=titulo_x),
+        alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
+        alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
+    ]
+    referencia_datos = pd.DataFrame({"referencia": [referencia]})
+    if horizontal:
+        barras = alt.Chart(datos).mark_bar(color="gray").encode(
+            x=alt.X("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
+            y=alt.Y("nombre:N", sort="-x", title=None),
+            tooltip=tooltip,
+        )
+        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(x="referencia:Q")
+    else:
+        barras = alt.Chart(datos).mark_bar(color="gray").encode(
+            x=alt.X("nombre:N", sort=None, title=titulo_x, axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
+            tooltip=tooltip,
+        )
+        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(y="referencia:Q")
+    return barras + linea
+
+
+def grafico_tasa_antiguedad(tabla, referencia):
+    """Tasa de baja mes a mes de antigüedad, con la tasa global como referencia."""
+    datos = tabla.rename(columns={"grupo": "tenure"})
+    linea = alt.Chart(datos).mark_line(color="gray", point=True).encode(
+        x=alt.X("tenure:Q", title=textos["campos"]["tenure"]),
+        y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=alt.Axis(format="%")),
+        tooltip=[
+            alt.Tooltip("tenure:Q", title=textos["campos"]["tenure"]),
+            alt.Tooltip("tasa:Q", title=textos["exp_eje_tasa"], format=".1%"),
+            alt.Tooltip("clientes:Q", title=textos["exp_eje_clientes"]),
+        ],
+    )
+    referencia_datos = pd.DataFrame({"referencia": [referencia]})
+    global_ = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(y="referencia:Q")
+    return linea + global_
+
+
+def grafico_servicios(tabla):
+    """Puntos de diferencia de tasa de baja entre no tener y tener cada servicio."""
+    datos = tabla.copy()
+    nombres = []
+    for servicio in datos["servicio"]:
+        nombres.append(textos["campos"][servicio])
+    datos["nombre"] = nombres
+    datos["puntos"] = datos["diferencia"] * 100
+    datos = datos[["nombre", "puntos"]]
+    return alt.Chart(datos).mark_bar(color="gray").encode(
+        x=alt.X("puntos:Q", title=textos["exp_servicios_eje"]),
+        y=alt.Y("nombre:N", sort="-x", title=None),
+        tooltip=[alt.Tooltip("puntos:Q", title=textos["exp_servicios_eje"], format=".1f")],
+    )
+
+
 def texto_estado(en_riesgo):
     if en_riesgo:
         return textos["en_riesgo"]
@@ -518,11 +589,15 @@ with st.sidebar:
 st.title(textos["titulo"])
 st.write(textos["subtitulo"])
 
-pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion, pestana_modelo = st.tabs([
+(
+    pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion,
+    pestana_exploracion, pestana_modelo,
+) = st.tabs([
     textos["pestana_resumen"],
     textos["pestana_cliente"],
     textos["pestana_riesgo"],
     textos["pestana_simulacion"],
+    textos["pestana_exploracion"],
     textos["pestana_modelo"],
 ])
 
@@ -760,6 +835,66 @@ with pestana_simulacion:
             st.caption(textos["sim_ultima_mes"].format(mes=st.session_state["sim_mes"]))
         else:
             st.caption(textos["sim_ultima_altas"].format(n=n, mes=st.session_state["sim_mes"]))
+
+with pestana_exploracion:
+    silver = cargar_clientes_silver()
+    tasa_global = silver["churn"].mean()
+    st.caption(textos["exp_intro"].format(n=len(silver)))
+
+    with st.container(border=True):
+        st.markdown(f"**{textos['exp_tenure_titulo']}**")
+        st.altair_chart(
+            grafico_tasa_antiguedad(tasa_por_grupo(silver, "tenure"), tasa_global),
+            width="stretch",
+        )
+        st.markdown(textos["exp_tenure_texto"])
+
+    col_contrato, col_fibra = st.columns(2, border=True)
+    with col_contrato:
+        st.markdown(f"**{textos['exp_contrato_titulo']}**")
+        st.altair_chart(
+            grafico_tasa_barras(tasa_por_grupo(silver, "contract"), tasa_global, campos["contract"]),
+            width="stretch",
+        )
+        st.markdown(textos["exp_contrato_texto"])
+    with col_fibra:
+        st.markdown(f"**{textos['exp_fibra_titulo']}**")
+        fibra = silver[silver["internet_service"] == "Fiber optic"].copy()
+        fibra["n_extras"] = numero_de_extras(fibra, SERVICIOS_INTERNET)
+        etiquetas_extras = {}
+        for numero in range(len(SERVICIOS_INTERNET) + 1):
+            etiquetas_extras[numero] = str(numero)
+        st.altair_chart(
+            grafico_tasa_barras(
+                tasa_por_grupo(fibra, "n_extras"), fibra["churn"].mean(),
+                textos["exp_fibra_eje"], etiquetas=etiquetas_extras,
+            ),
+            width="stretch",
+        )
+        st.markdown(textos["exp_fibra_texto"])
+
+    col_pago, col_servicios = st.columns(2, border=True)
+    with col_pago:
+        st.markdown(f"**{textos['exp_pago_titulo']}**")
+        mensual = silver[silver["contract"] == "Month-to-month"]
+        st.altair_chart(
+            grafico_tasa_barras(
+                tasa_por_grupo(mensual, "payment_method"), mensual["churn"].mean(),
+                campos["payment_method"], horizontal=True,
+            ),
+            width="stretch",
+        )
+        st.markdown(textos["exp_pago_texto"])
+    with col_servicios:
+        st.markdown(f"**{textos['exp_servicios_titulo']}**")
+        st.altair_chart(
+            grafico_servicios(diferencia_por_servicio(silver, SERVICIOS_INTERNET)),
+            width="stretch",
+        )
+        st.markdown(textos["exp_servicios_texto"])
+
+    with st.expander(textos["exp_limites_titulo"]):
+        st.markdown(textos["exp_limites_texto"])
 
 with pestana_modelo:
     test = puntuar_test(modelo, umbral)

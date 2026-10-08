@@ -7,8 +7,9 @@ import pytest
 
 from churn.features import silver_a_gold
 from app.logica import (
-    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, importancia_global,
-    matriz_confusion, medias_transformadas, pasar_un_mes, puntuar,
+    altas_nuevas, cambios_en_riesgo, contribuciones, curva_ganancia, diferencia_por_servicio,
+    importancia_global, matriz_confusion, medias_transformadas, numero_de_extras,
+    pasar_un_mes, puntuar, tasa_por_grupo,
 )
 
 RUTA_MODELO = Path(__file__).resolve().parents[1] / "app" / "model" / "churn_classifier.joblib"
@@ -217,3 +218,32 @@ def test_importancia_global_una_por_variable_y_positiva(clientes, modelo):
     assert len(importancia) == len(modelo.named_steps["preprocesado"].feature_names_in_)
     assert (importancia >= 0).all()
     assert importancia.is_monotonic_decreasing
+
+
+@pytest.fixture
+def clientes_con_churn():
+    """Seis clientes inventados con la columna churn, para las funciones de exploración."""
+    return pd.DataFrame({
+        "contract": ["Month-to-month", "Month-to-month", "Month-to-month", "One year", "One year", "Two year"],
+        "tech_support": ["No", "No", "Yes", "Yes", "No internet service", "Yes"],
+        "online_security": ["Yes", "No", "No", "Yes", "No internet service", "No"],
+        "churn": [1, 1, 0, 0, 0, 0],
+    })
+
+
+def test_tasa_por_grupo(clientes_con_churn):
+    tabla = tasa_por_grupo(clientes_con_churn, "contract").set_index("grupo")
+    assert tabla.loc["Month-to-month", "tasa"] == pytest.approx(2 / 3)
+    assert tabla.loc["One year", "tasa"] == 0
+    assert tabla["clientes"].sum() == len(clientes_con_churn)
+
+
+def test_numero_de_extras(clientes_con_churn):
+    extras = numero_de_extras(clientes_con_churn, ["tech_support", "online_security"])
+    assert extras.tolist() == [1, 0, 1, 2, 0, 1]
+
+
+def test_diferencia_por_servicio_excluye_sin_internet(clientes_con_churn):
+    tabla = diferencia_por_servicio(clientes_con_churn, ["tech_support"]).set_index("servicio")
+    # Sin el servicio: 2 de 2 se van. Con el servicio: 0 de 3. El cliente sin internet no cuenta.
+    assert tabla.loc["tech_support", "diferencia"] == pytest.approx(1.0)

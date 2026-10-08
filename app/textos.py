@@ -73,6 +73,62 @@ TEXTOS = {
         "pestana_cliente": "Consultar un cliente",
         "pestana_riesgo": "Lista de riesgo",
         "pestana_simulacion": "Simular un mes",
+        "pestana_exploracion": "Exploración",
+        "exp_intro": (
+            "Tasa de baja de los {n} clientes del dataset en los cortes más relevantes del "
+            "análisis exploratorio. La línea discontinua es la tasa de referencia de cada "
+            "gráfico. Los textos son las conclusiones del notebook 02_exploration."
+        ),
+        "exp_eje_tasa": "Tasa de baja",
+        "exp_eje_clientes": "Clientes",
+        "exp_tenure_titulo": "Tasa de baja por antigüedad",
+        "exp_tenure_texto": (
+            "El problema de retención está, principalmente, en los primeros meses. Quien "
+            "supera los dos años apenas se marcha."
+        ),
+        "exp_contrato_titulo": "Tasa de baja por tipo de contrato",
+        "exp_contrato_texto": (
+            "Puede resultar obvio, ya que los clientes con permanencia son los que más se "
+            "retienen por la propia naturaleza del contrato. Sabiendo esto, el resto de "
+            "variables —método de pago, cómo recibe la factura, etc.— pueden estar muy "
+            "relacionadas con el tipo de contrato y hay que mirarlas con sumo cuidado."
+        ),
+        "exp_fibra_titulo": "Clientes de fibra: tasa de baja según servicios extra contratados",
+        "exp_fibra_eje": "Servicios extra contratados (de 6)",
+        "exp_fibra_texto": (
+            "Los clientes que contratan más servicios tienen una tasa de baja mucho menor. "
+            "**El problema está en la fibra contratada sola.**"
+        ),
+        "exp_pago_titulo": "Contrato mensual: tasa de baja por forma de pago",
+        "exp_pago_texto": (
+            "**Conclusión:** el contrato explicaba una parte, pero no todo. A igualdad de "
+            "contrato, el cheque electrónico sigue asociado a unos 20 puntos más de bajas. "
+            "Domiciliar el pago, en cambio, se asocia a permanencia incluso entre los "
+            "clientes sin compromiso."
+        ),
+        "exp_servicios_titulo": "Diferencia de tasa de baja entre no tener y tener cada servicio",
+        "exp_servicios_eje": "Puntos de diferencia",
+        "exp_servicios_texto": (
+            "Los servicios que **resuelven problemas** acompañan a la permanencia. Los de "
+            "**entretenimiento** no la mueven prácticamente nada."
+        ),
+        "exp_limites_titulo": "Lo que estos datos no pueden responder",
+        "exp_limites_texto": (
+            "**No sabemos por qué la fibra falla.** Los datos dicen que los clientes de fibra "
+            "se van mucho más, pero no si es por precio, por calidad del servicio o porque la "
+            "competencia ataca justo a ese segmento. Esa información no está en el sistema.\n\n"
+            "**No sabemos si los servicios retienen o solo lo parecen.** Puede que contratar "
+            "soporte técnico haga más incómodo cambiarse de compañía, o puede que el cliente "
+            "que ya pensaba quedarse sea el que va sumando extras. Las dos explicaciones encajan "
+            "igual de bien con los datos y llevan a decisiones opuestas: en el primer caso, "
+            "regalar servicios reduce la fuga; en el segundo, solo cuesta dinero.\n\n"
+            "**Lo mismo vale para el contrato largo.** No sabemos si ata al cliente o si lo "
+            "elige quien ya tenía intención de quedarse. Posiblemente sea lo primero, pero no "
+            "podemos arriesgarnos a dar un veredicto así.\n\n"
+            "Las tres se resolverían igual: con una campaña controlada, ofreciendo el "
+            "complemento a un grupo de clientes elegidos al azar y comparando su comportamiento "
+            "con el de un grupo equivalente que no lo recibe."
+        ),
         "pestana_modelo": "Modelo",
         "modelo_intro": (
             "Evaluación sobre los {n} clientes de test, que el modelo no vio al entrenar. "
@@ -313,6 +369,62 @@ TEXTOS = {
         "pestana_cliente": "Score a customer",
         "pestana_riesgo": "Risk list",
         "pestana_simulacion": "Simulate a month",
+        "pestana_exploracion": "Exploration",
+        "exp_intro": (
+            "Churn rate of the {n} customers in the dataset across the most relevant cuts "
+            "of the exploratory analysis. The dashed line is each chart's reference rate. "
+            "The texts are the conclusions of the 02_exploration notebook."
+        ),
+        "exp_eje_tasa": "Churn rate",
+        "exp_eje_clientes": "Customers",
+        "exp_tenure_titulo": "Churn rate by tenure",
+        "exp_tenure_texto": (
+            "The retention problem lies mainly in the first few months. Customers who make "
+            "it past two years barely leave at all."
+        ),
+        "exp_contrato_titulo": "Churn rate by contract type",
+        "exp_contrato_texto": (
+            "This may seem obvious, since customers under commitment are the ones most likely "
+            "to stay by the very nature of the contract. Knowing this, the remaining variables "
+            "— payment method, how the invoice is received, and so on — may be closely tied to "
+            "contract type and must be examined with great care."
+        ),
+        "exp_fibra_titulo": "Fiber customers: churn rate by number of extra services",
+        "exp_fibra_eje": "Extra services held (out of 6)",
+        "exp_fibra_texto": (
+            "Customers holding more services churn far less. **The problem is fiber bought "
+            "on its own.**"
+        ),
+        "exp_pago_titulo": "Month-to-month contracts: churn rate by payment method",
+        "exp_pago_texto": (
+            "**Conclusion:** contract explained part of it, but not all. With contract held "
+            "constant, electronic check is still associated with some 20 additional points of "
+            "churn. Setting up automatic payment, by contrast, is associated with staying, even "
+            "among customers with no commitment."
+        ),
+        "exp_servicios_titulo": "Churn rate gap between not holding and holding each service",
+        "exp_servicios_eje": "Percentage points",
+        "exp_servicios_texto": (
+            "Services that **solve problems** go hand in hand with retention. **Entertainment** "
+            "ones barely move it at all."
+        ),
+        "exp_limites_titulo": "What this data cannot answer",
+        "exp_limites_texto": (
+            "**We do not know why fiber is failing.** The data says fiber customers leave far "
+            "more often, but not whether it is down to price, service quality, or competitors "
+            "targeting that segment specifically. That information is not in the system.\n\n"
+            "**We do not know whether services retain customers or merely appear to.** Holding "
+            "tech support may make switching provider more of a hassle, or the customer who "
+            "already intended to stay may simply be the one who keeps adding extras. Both "
+            "explanations fit the data equally well and lead to opposite decisions: in the "
+            "first case, giving services away reduces churn; in the second, it only costs money.\n\n"
+            "**The same applies to long contracts.** We do not know whether they tie the "
+            "customer in or whether they are chosen by those who already meant to stay. It is "
+            "probably the former, but we cannot risk issuing a verdict on that.\n\n"
+            "All three would be settled the same way: through a controlled campaign, offering "
+            "the add-on to a randomly selected group of customers and comparing their behaviour "
+            "against an equivalent group that does not receive it."
+        ),
         "pestana_modelo": "Model",
         "modelo_intro": (
             "Evaluation on the {n} test customers, which the model did not see during "
