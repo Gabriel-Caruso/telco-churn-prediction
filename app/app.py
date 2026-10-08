@@ -8,6 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
+from sklearn.metrics import average_precision_score
 
 CARPETA_APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(CARPETA_APP.parent))
@@ -68,6 +69,22 @@ def puntuar_clientes_actuales(_modelo, umbral):
     """Puntúa los clientes del CSV una sola vez. El guion bajo de _modelo le dice
     a Streamlit que no use ese argumento para decidir si el resultado está en caché."""
     return puntuar(cargar_clientes_actuales(), _modelo, umbral)
+
+
+@st.cache_data
+def cargar_clientes_silver():
+    """Los 7043 clientes de silver, con la columna churn."""
+    return pd.read_csv(CARPETA_APP / "data" / "clientes_silver.csv")
+
+
+@st.cache_data
+def puntuar_test(_modelo, umbral):
+    """Puntúa los clientes del conjunto de test: el mismo split que se usó en Databricks
+    (ids_test.csv sale de gold_split.csv, exportado en 11_challenger)."""
+    silver = cargar_clientes_silver()
+    ids_test = pd.read_csv(CARPETA_APP / "data" / "ids_test.csv")[ID]
+    test = silver[silver[ID].isin(ids_test)]
+    return puntuar(test, _modelo, umbral)
 
 
 modelo, metadatos = cargar_modelo()
@@ -182,6 +199,52 @@ def simular_altas():
     st.session_state["sim_ultima_accion"] = ("altas", n)
 
 
+def diagrama_arquitectura():
+    """Devuelve el diagrama del proyecto en lenguaje DOT de Graphviz.
+    Cada nodo es 'id [label="..."]' y cada flecha 'origen -> destino'."""
+    nodos = textos["arquitectura"]
+    nodos_databricks = [
+        "datos", "bronze", "silver", "gold", "entrenamiento", "challenger",
+        "mlflow", "registro", "batch", "serving", "exportacion",
+    ]
+    flechas = [
+        ("datos", "bronze"), ("bronze", "silver"), ("silver", "gold"),
+        ("gold", "entrenamiento"), ("gold", "challenger"),
+        ("entrenamiento", "mlflow"), ("challenger", "mlflow"), ("mlflow", "registro"),
+        ("registro", "batch"), ("registro", "serving"), ("registro", "exportacion"),
+        ("exportacion", "app"),
+    ]
+    # El paquete churn alimenta la capa gold y la app: flechas discontinuas
+    flechas_paquete = [("paquete", "gold"), ("paquete", "app")]
+
+    lineas = [
+        "digraph {",
+        'rankdir=LR; bgcolor="transparent";',
+        'node [shape=box, style="rounded,filled", fillcolor="#F2F2F2", '
+        'color="#999999", fontcolor="#1A1A1A", fontname="sans-serif", fontsize=11];',
+        'edge [color="#999999"];',
+        "subgraph cluster_databricks {",
+        f'label="{nodos["grupo_databricks"]}"; fontcolor="#999999"; color="#999999"; style="dashed,rounded";',
+    ]
+    for nodo in nodos_databricks:
+        lineas.append(f'{nodo} [label="{nodos[nodo]}"];')
+    lineas.append("}")
+    lineas.append("subgraph cluster_streamlit {")
+    lineas.append(
+        f'label="{nodos["grupo_streamlit"]}"; fontcolor="#999999"; color="#999999"; style="dashed,rounded";'
+    )
+    lineas.append(f'app [label="{nodos["app"]}"];')
+    lineas.append("}")
+    lineas.append(f'paquete [label="{nodos["paquete"]}"];')
+
+    for origen, destino in flechas:
+        lineas.append(f"{origen} -> {destino};")
+    for origen, destino in flechas_paquete:
+        lineas.append(f"{origen} -> {destino} [style=dashed];")
+    lineas.append("}")
+    return "\n".join(lineas)
+
+
 def texto_estado(en_riesgo):
     if en_riesgo:
         return textos["en_riesgo"]
@@ -262,11 +325,46 @@ with st.sidebar:
 st.title(textos["titulo"])
 st.write(textos["subtitulo"])
 
-pestana_cliente, pestana_riesgo, pestana_simulacion = st.tabs([
+pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion = st.tabs([
+    textos["pestana_resumen"],
     textos["pestana_cliente"],
     textos["pestana_riesgo"],
     textos["pestana_simulacion"],
 ])
+
+with pestana_resumen:
+    st.write(textos["resumen_problema"])
+
+    silver = cargar_clientes_silver()
+    tasa_baja = silver["churn"].mean()
+    test = puntuar_test(modelo, umbral)
+    pr_auc_test = average_precision_score(test["churn"], test["churn_probability"])
+    # Un modelo al azar tiene una PR-AUC igual a la proporción de bajas
+    base_aleatoria = test["churn"].mean()
+
+    col_clientes, col_tasa, col_pr_auc, col_umbral = st.columns(4, border=True)
+    col_clientes.metric(textos["resumen_kpi_clientes"], len(silver))
+    col_tasa.metric(textos["resumen_kpi_tasa"], f"{tasa_baja:.1%}")
+    col_pr_auc.metric(
+        textos["resumen_kpi_pr_auc"], f"{pr_auc_test:.3f}",
+        help=textos["resumen_ayuda_pr_auc"].format(n=len(test), base=f"{base_aleatoria:.3f}"),
+    )
+    col_umbral.metric(textos["ficha_umbral"], f"{umbral:.0%}")
+
+    st.subheader(textos["resumen_arquitectura"])
+    st.graphviz_chart(diagrama_arquitectura(), width="stretch")
+    st.caption(textos["resumen_arquitectura_nota"])
+
+    col_decisiones, col_uso = st.columns([3, 2])
+    with col_decisiones:
+        st.subheader(textos["resumen_decisiones"])
+        st.markdown(textos["resumen_decisiones_lista"].format(
+            tasa=f"{tasa_baja:.1%}",
+            umbral=f"{umbral:.2f}".replace(".", textos["separador_decimal"]),
+        ))
+    with col_uso:
+        st.subheader(textos["resumen_uso"])
+        st.markdown(textos["resumen_uso_lista"])
 
 with pestana_cliente:
     st.button(textos["boton_azar"], on_click=cargar_cliente_azar, args=(clientes,))

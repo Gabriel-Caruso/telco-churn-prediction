@@ -12,6 +12,64 @@ TEXTOS = {
     "es": {
         "titulo": "Telco churn",
         "subtitulo": "Probabilidad de baja de clientes de una operadora de telecomunicaciones.",
+        "separador_decimal": ",",
+        "pestana_resumen": "Resumen",
+        "resumen_problema": (
+            "Una operadora de telecomunicaciones pierde a uno de cada cuatro clientes. "
+            "Este proyecto ordena a los clientes actuales por su probabilidad de baja "
+            "para que el equipo de retención sepa a quién contactar primero."
+        ),
+        "resumen_kpi_clientes": "Clientes en el dataset",
+        "resumen_kpi_tasa": "Tasa de baja",
+        "resumen_kpi_pr_auc": "PR-AUC en test",
+        "resumen_ayuda_pr_auc": (
+            "Mide lo bien que el modelo ordena a los clientes por riesgo, sobre {n} "
+            "clientes que no vio al entrenar. Un modelo al azar obtendría {base}, "
+            "la proporción de bajas en ese conjunto."
+        ),
+        "resumen_arquitectura": "Arquitectura",
+        "resumen_arquitectura_nota": (
+            "Todo el ciclo se ejecuta en Databricks Free Edition. Esta app carga el "
+            "modelo exportado y calcula las features con el mismo paquete que el entrenamiento."
+        ),
+        "resumen_decisiones": "Decisiones clave",
+        "resumen_decisiones_lista": (
+            "- **Métrica: PR-AUC.** Con un {tasa} de bajas, la accuracy premiaría a un "
+            "modelo que no detecta a nadie. Lo que importa es ordenar bien a los clientes por riesgo.\n"
+            "- **Umbral {umbral}.** El análisis de umbrales marcó el tramo 0,30-0,40, donde "
+            "cada baja detectada cuesta alrededor de una llamada y media de más. El valor "
+            "exacto depende del coste de una oferta y del valor de un cliente retenido.\n"
+            "- **Champion: regresión logística.** Random forest, gradient boosting y XGBoost "
+            "ajustados la superan en unos 0,02 de PR-AUC, en el límite del ruido entre folds. "
+            "No compensa perder la explicabilidad de los coeficientes.\n"
+            "- **Mismo código en entrenamiento y en la app.** Las features se calculan en un "
+            "paquete propio con tests, y la tabla gold y esta app usan la misma función."
+        ),
+        "resumen_uso": "Qué puedes hacer en esta app",
+        "resumen_uso_lista": (
+            "- **Consultar un cliente:** introduce un perfil o carga uno real y obtén su "
+            "probabilidad de baja.\n"
+            "- **Lista de riesgo:** los clientes actuales ordenados por riesgo, con filtros "
+            "y descarga en CSV.\n"
+            "- **Simular un mes:** cómo cambia la lista con el paso del tiempo y las altas nuevas."
+        ),
+        "arquitectura": {
+            "datos": "Dataset IBM Telco\\n7043 clientes",
+            "bronze": "Bronze\\nCSV sin modificar",
+            "silver": "Silver\\nlimpieza y validación",
+            "gold": "Gold\\n8 features derivadas",
+            "paquete": "Paquete churn\\nfeatures con tests",
+            "entrenamiento": "Entrenamiento\\nscikit-learn, CV 5 folds",
+            "challenger": "Challengers\\nRF, GB, XGBoost",
+            "mlflow": "MLflow\\nexperimentos y métricas",
+            "registro": "Unity Catalog\\nmodelo con alias champion",
+            "batch": "Batch scoring\\ntabla customer_scores",
+            "serving": "Model Serving\\nendpoint REST",
+            "exportacion": "Exportación\\njoblib + JSON",
+            "app": "Esta app",
+            "grupo_databricks": "Databricks Free Edition",
+            "grupo_streamlit": "Streamlit Community Cloud",
+        },
         "pestana_cliente": "Consultar un cliente",
         "pestana_riesgo": "Lista de riesgo",
         "pestana_simulacion": "Simular un mes",
@@ -122,6 +180,62 @@ TEXTOS = {
     "en": {
         "titulo": "Telco churn",
         "subtitulo": "Churn probability for customers of a telecom operator.",
+        "separador_decimal": ".",
+        "pestana_resumen": "Overview",
+        "resumen_problema": (
+            "A telecom operator loses one in four customers. This project ranks current "
+            "customers by churn probability so the retention team knows who to contact first."
+        ),
+        "resumen_kpi_clientes": "Customers in the dataset",
+        "resumen_kpi_tasa": "Churn rate",
+        "resumen_kpi_pr_auc": "Test PR-AUC",
+        "resumen_ayuda_pr_auc": (
+            "Measures how well the model ranks customers by risk, on {n} customers it "
+            "did not see during training. A random model would score {base}, the share "
+            "of churners in that set."
+        ),
+        "resumen_arquitectura": "Architecture",
+        "resumen_arquitectura_nota": (
+            "The whole lifecycle runs on Databricks Free Edition. This app loads the "
+            "exported model and computes features with the same package used in training."
+        ),
+        "resumen_decisiones": "Key decisions",
+        "resumen_decisiones_lista": (
+            "- **Metric: PR-AUC.** With {tasa} churn, accuracy would reward a model that "
+            "detects nobody. What matters is ranking customers well by risk.\n"
+            "- **Threshold {umbral}.** The threshold analysis pointed to the 0.30-0.40 "
+            "range, where each detected churner costs about one and a half extra calls. "
+            "The exact value depends on the cost of an offer and the value of a retained customer.\n"
+            "- **Champion: logistic regression.** Tuned random forest, gradient boosting and "
+            "XGBoost beat it by about 0.02 PR-AUC, at the edge of fold-to-fold noise. Not "
+            "worth losing the explainability of its coefficients.\n"
+            "- **Same code in training and in the app.** Features are computed in a tested "
+            "in-house package, and both the gold table and this app use the same function."
+        ),
+        "resumen_uso": "What you can do in this app",
+        "resumen_uso_lista": (
+            "- **Score a customer:** enter a profile or load a real one and get its churn "
+            "probability.\n"
+            "- **Risk list:** current customers ranked by risk, with filters and CSV download.\n"
+            "- **Simulate a month:** how the list changes over time and with new customers."
+        ),
+        "arquitectura": {
+            "datos": "IBM Telco dataset\\n7,043 customers",
+            "bronze": "Bronze\\nraw CSV",
+            "silver": "Silver\\ncleaning and validation",
+            "gold": "Gold\\n8 derived features",
+            "paquete": "churn package\\ntested features",
+            "entrenamiento": "Training\\nscikit-learn, 5-fold CV",
+            "challenger": "Challengers\\nRF, GB, XGBoost",
+            "mlflow": "MLflow\\nexperiments and metrics",
+            "registro": "Unity Catalog\\nmodel with champion alias",
+            "batch": "Batch scoring\\ncustomer_scores table",
+            "serving": "Model Serving\\nREST endpoint",
+            "exportacion": "Export\\njoblib + JSON",
+            "app": "This app",
+            "grupo_databricks": "Databricks Free Edition",
+            "grupo_streamlit": "Streamlit Community Cloud",
+        },
         "pestana_cliente": "Score a customer",
         "pestana_riesgo": "Risk list",
         "pestana_simulacion": "Simulate a month",
