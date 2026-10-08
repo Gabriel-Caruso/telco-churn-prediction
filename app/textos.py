@@ -238,11 +238,10 @@ TEXTOS = {
             "servicios retienen o si los contrata quien ya pensaba quedarse."
         ),
         "tldr": [
-            "**Los nuevos se van** → cuídalos los tres primeros meses.",
-            "**El contrato mensual no ata** → ofrece pasar a anual.",
-            "**La fibra sola no convence** → añade soporte, no bajes el precio.",
-            "**El cheque electrónico se escapa** → que domicilien el pago.",
-            "**¿A quién llamar primero?** → a lo alto de la lista de riesgo.",
+            "Planes de negocio para los tres primeros meses.",
+            "Estudiar planes anuales que compitan fuertemente contra planes mensuales.",
+            "Intentar domiciliar el pago.",
+            "Gestionar con la aplicación a quién llamar primero según la lista de riesgo.",
         ],
         "exp_limites_titulo": "Lo que estos datos no pueden responder",
         "exp_limites_texto": (
@@ -668,11 +667,10 @@ TEXTOS = {
             "retain customers or are simply bought by those who already meant to stay."
         ),
         "tldr": [
-            "**New customers leave** → look after them for the first three months.",
-            "**Month-to-month does not bind** → offer a one-year contract.",
-            "**Fiber on its own does not convince** → add support, do not cut the price.",
-            "**Electronic check slips away** → get them on automatic payment.",
-            "**Who to call first?** → the top of the risk list.",
+            "Business plans for the first three months.",
+            "Design annual plans that compete strongly against month-to-month plans.",
+            "Encourage automatic payment.",
+            "Use the app to decide who to call first, based on the risk list.",
         ],
         "exp_limites_titulo": "What this data cannot answer",
         "exp_limites_texto": (
