@@ -3,15 +3,50 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import altair as alt
 import joblib
+import numpy as np
+import pandas as pd
 import streamlit as st
 
 CARPETA_APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(CARPETA_APP.parent))
 
+from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
+from logica import puntuar
 from textos import TEXTOS
 
 URL_REPO = "https://github.com/Gabriel-Caruso/telco-churn-prediction"
+
+# Okabe-Ito: naranja para riesgo, azul para fuera de riesgo
+COLOR_RIESGO = "#E69F00"
+COLOR_SIN_RIESGO = "#0072B2"
+
+SERVICIOS_INTERNET = SERVICIOS_SOPORTE + SERVICIOS_OCIO
+SI_NO = ["Yes", "No"]
+OPCIONES = {
+    "gender": ["Female", "Male"],
+    "senior_citizen": [0, 1],
+    "partner": SI_NO,
+    "dependents": SI_NO,
+    "contract": ["Month-to-month", "One year", "Two year"],
+    "paperless_billing": SI_NO,
+    "payment_method": [
+        "Electronic check",
+        "Mailed check",
+        "Bank transfer (automatic)",
+        "Credit card (automatic)",
+    ],
+    "phone_service": SI_NO,
+    "internet_service": ["DSL", "Fiber optic", "No"],
+}
+COLUMNAS_TABLA = [
+    ID, "churn_probability", "en_riesgo", "contract", "tenure",
+    "monthly_charges", "internet_service", "payment_method",
+]
+COLUMNAS_FILTRO = ["contract", "internet_service", "payment_method"]
+COLUMNAS_ENTERAS = ["senior_citizen", "tenure"]
+COLUMNAS_DECIMALES = ["monthly_charges", "total_charges"]
 
 st.set_page_config(page_title="Telco churn", layout="wide")
 
@@ -23,7 +58,148 @@ def cargar_modelo():
     return modelo, metadatos
 
 
+@st.cache_data
+def cargar_clientes_actuales():
+    return pd.read_csv(CARPETA_APP / "data" / "clientes_actuales.csv")
+
+
+@st.cache_data
+def puntuar_clientes_actuales(_modelo, umbral):
+    """Puntúa los clientes del CSV una sola vez. El guion bajo de _modelo le dice
+    a Streamlit que no use ese argumento para decidir si el resultado está en caché."""
+    return puntuar(cargar_clientes_actuales(), _modelo, umbral)
+
+
 modelo, metadatos = cargar_modelo()
+umbral = metadatos["umbral"]
+clientes = cargar_clientes_actuales()
+COLUMNAS_FORMULARIO = clientes.columns.drop(ID).tolist()
+
+
+def clave(columna):
+    """Nombre en st.session_state del widget de una columna del formulario."""
+    return f"form_{columna}"
+
+
+def mostrar_valor(valor):
+    """Traduce un valor del dataset para mostrarlo; si no hay traducción, lo deja igual."""
+    return textos["valores"].get(valor, valor)
+
+
+def rellenar_formulario(cliente):
+    """Copia los valores de un cliente (una fila de silver) en los widgets del formulario."""
+    for columna in COLUMNAS_FORMULARIO:
+        valor = cliente[columna]
+        if columna in COLUMNAS_ENTERAS:
+            valor = int(valor)
+        elif columna in COLUMNAS_DECIMALES:
+            valor = float(valor)
+        st.session_state[clave(columna)] = valor
+    st.session_state["form_customer_id"] = cliente[ID]
+
+
+def cargar_cliente_azar(clientes):
+    fila = st.session_state["generador"].integers(len(clientes))
+    rellenar_formulario(clientes.iloc[fila])
+
+
+def proponer_total():
+    """Al cambiar antigüedad o cargo mensual, propone su producto como cargo acumulado.
+    Con antigüedad 0 el resultado es 0, que es la regla que se pide."""
+    tenure = st.session_state[clave("tenure")]
+    mensual = st.session_state[clave("monthly_charges")]
+    st.session_state[clave("total_charges")] = round(tenure * mensual, 2)
+
+
+def ajustar_lineas():
+    """Sin línea telefónica, varias líneas solo puede valer 'No phone service'."""
+    if st.session_state[clave("phone_service")] == "No":
+        st.session_state[clave("multiple_lines")] = "No phone service"
+    elif st.session_state[clave("multiple_lines")] == "No phone service":
+        st.session_state[clave("multiple_lines")] = "No"
+
+
+def ajustar_servicios_internet():
+    """Sin internet, los seis servicios de internet solo pueden valer 'No internet service'."""
+    sin_internet = st.session_state[clave("internet_service")] == "No"
+    for servicio in SERVICIOS_INTERNET:
+        if sin_internet:
+            st.session_state[clave(servicio)] = "No internet service"
+        elif st.session_state[clave(servicio)] == "No internet service":
+            st.session_state[clave(servicio)] = "No"
+
+
+def construir_cliente():
+    """Devuelve el cliente del formulario como un DataFrame de una fila en formato silver."""
+    cliente = {}
+    for columna in COLUMNAS_FORMULARIO:
+        cliente[columna] = st.session_state[clave(columna)]
+    return pd.DataFrame([cliente])
+
+
+def etiqueta_riesgo(en_riesgo):
+    """Etiqueta con color y texto: el color nunca es la única diferencia."""
+    if en_riesgo:
+        color_fondo, color_texto, texto = COLOR_RIESGO, "#000000", textos["en_riesgo"]
+    else:
+        color_fondo, color_texto, texto = COLOR_SIN_RIESGO, "#FFFFFF", textos["sin_riesgo"]
+    return (
+        f'<span style="background-color: {color_fondo}; color: {color_texto}; '
+        f'padding: 0.25rem 0.75rem; border-radius: 0.5rem; font-weight: 600;">{texto}</span>'
+    )
+
+
+def texto_estado(en_riesgo):
+    if en_riesgo:
+        return textos["en_riesgo"]
+    return textos["sin_riesgo"]
+
+
+def grafico_probabilidades(puntuados):
+    """Histograma de probabilidades coloreado por estado, con la línea del umbral."""
+    datos = pd.DataFrame({
+        "probabilidad": puntuados["churn_probability"],
+        "estado": puntuados["en_riesgo"].map(texto_estado),
+    })
+    colores = alt.Scale(
+        domain=[textos["en_riesgo"], textos["sin_riesgo"]],
+        range=[COLOR_RIESGO, COLOR_SIN_RIESGO],
+    )
+    barras = alt.Chart(datos).mark_bar().encode(
+        x=alt.X(
+            "probabilidad:Q",
+            bin=alt.Bin(step=0.05, extent=[0, 1]),
+            title=textos["probabilidad"],
+            axis=alt.Axis(format="%"),
+        ),
+        y=alt.Y("count():Q", title=textos["grafico_eje_y"]),
+        color=alt.Color("estado:N", title=textos["columna_estado"], scale=colores),
+        tooltip=[
+            alt.Tooltip("estado:N", title=textos["columna_estado"]),
+            alt.Tooltip("count():Q", title=textos["grafico_eje_y"]),
+        ],
+    )
+
+    datos_umbral = pd.DataFrame({
+        "umbral": [umbral],
+        "etiqueta": [textos["grafico_umbral"].format(umbral=f"{umbral:.0%}")],
+    })
+    linea = alt.Chart(datos_umbral).mark_rule(strokeDash=[6, 4], color="gray").encode(
+        x="umbral:Q",
+    )
+    etiqueta = alt.Chart(datos_umbral).mark_text(align="left", dx=6, dy=-6, color="gray").encode(
+        x="umbral:Q",
+        y=alt.value(0),
+        text="etiqueta:N",
+    )
+    return (barras + linea + etiqueta).properties(title=textos["grafico_titulo"])
+
+
+# Estado inicial: se ejecuta solo la primera vez que se abre la app en el navegador
+if "generador" not in st.session_state:
+    st.session_state["generador"] = np.random.default_rng(42)
+if clave("tenure") not in st.session_state:
+    rellenar_formulario(clientes.iloc[0])
 
 with st.sidebar:
     # La etiqueta va en los dos idiomas porque todavía no se sabe cuál se ha elegido.
@@ -45,7 +221,7 @@ with st.sidebar:
         st.markdown(f"**{textos['ficha_modelo']}**")
         st.markdown(f"{textos['ficha_nombre']}: `{metadatos['model_name']}`")
         st.markdown(f"{textos['ficha_version']}: {metadatos['version']}")
-        st.markdown(f"{textos['ficha_umbral']}: {metadatos['umbral']:.0%}")
+        st.markdown(f"{textos['ficha_umbral']}: {umbral:.0%}")
         st.markdown(f"{textos['ficha_fecha']}: {fecha_exportado}")
 
 st.title(textos["titulo"])
@@ -56,3 +232,162 @@ pestana_cliente, pestana_riesgo, pestana_simulacion = st.tabs([
     textos["pestana_riesgo"],
     textos["pestana_simulacion"],
 ])
+
+with pestana_cliente:
+    st.button(textos["boton_azar"], on_click=cargar_cliente_azar, args=(clientes,))
+    st.caption(textos["cliente_cargado"].format(customer_id=st.session_state["form_customer_id"]))
+
+    campos = textos["campos"]
+    col_personales, col_contrato, col_servicios = st.columns(3, border=True)
+
+    with col_personales:
+        st.markdown(f"**{textos['grupo_personales']}**")
+        for columna in ["gender", "senior_citizen", "partner", "dependents"]:
+            st.selectbox(
+                campos[columna], OPCIONES[columna],
+                key=clave(columna), format_func=mostrar_valor,
+            )
+
+    with col_contrato:
+        st.markdown(f"**{textos['grupo_contrato']}**")
+        st.slider(
+            campos["tenure"], min_value=0, max_value=72,
+            key=clave("tenure"), on_change=proponer_total,
+        )
+        for columna in ["contract", "paperless_billing", "payment_method"]:
+            st.selectbox(
+                campos[columna], OPCIONES[columna],
+                key=clave(columna), format_func=mostrar_valor,
+            )
+        # El cargo mensual se limita al rango de los clientes del CSV
+        st.number_input(
+            campos["monthly_charges"],
+            min_value=float(clientes["monthly_charges"].min()),
+            max_value=float(clientes["monthly_charges"].max()),
+            step=1.0, format="%.2f",
+            key=clave("monthly_charges"), on_change=proponer_total,
+        )
+        st.number_input(
+            campos["total_charges"], min_value=0.0, step=1.0, format="%.2f",
+            key=clave("total_charges"), help=textos["ayuda_total"],
+            disabled=st.session_state[clave("tenure")] == 0,
+        )
+
+    with col_servicios:
+        st.markdown(f"**{textos['grupo_servicios']}**")
+        st.selectbox(
+            campos["phone_service"], OPCIONES["phone_service"],
+            key=clave("phone_service"), format_func=mostrar_valor, on_change=ajustar_lineas,
+        )
+        sin_telefono = st.session_state[clave("phone_service")] == "No"
+        if sin_telefono:
+            opciones_lineas = ["No phone service"]
+        else:
+            opciones_lineas = SI_NO
+        st.selectbox(
+            campos["multiple_lines"], opciones_lineas,
+            key=clave("multiple_lines"), format_func=mostrar_valor, disabled=sin_telefono,
+        )
+
+        st.selectbox(
+            campos["internet_service"], OPCIONES["internet_service"],
+            key=clave("internet_service"), format_func=mostrar_valor,
+            on_change=ajustar_servicios_internet,
+        )
+        sin_internet = st.session_state[clave("internet_service")] == "No"
+        if sin_internet:
+            opciones_servicio = ["No internet service"]
+        else:
+            opciones_servicio = SI_NO
+        for servicio in SERVICIOS_INTERNET:
+            st.selectbox(
+                campos[servicio], opciones_servicio,
+                key=clave(servicio), format_func=mostrar_valor, disabled=sin_internet,
+            )
+
+    if st.button(textos["boton_calcular"], type="primary"):
+        cliente = construir_cliente()
+        tenure = cliente["tenure"].iloc[0]
+        total = cliente["total_charges"].iloc[0]
+        if tenure > 0 and total <= 0:
+            st.error(textos["error_total"])
+        else:
+            puntuado = puntuar(cliente, modelo, umbral)
+            probabilidad = puntuado["churn_probability"].iloc[0]
+            en_riesgo = puntuado["en_riesgo"].iloc[0]
+
+            if en_riesgo:
+                frase = textos["frase_riesgo"]
+            else:
+                frase = textos["frase_sin_riesgo"]
+
+            with st.container(border=True):
+                st.metric(textos["probabilidad"], f"{probabilidad:.1%}")
+                st.markdown(etiqueta_riesgo(en_riesgo), unsafe_allow_html=True)
+                st.write(frase.format(probabilidad=f"{probabilidad:.1%}", umbral=f"{umbral:.0%}"))
+
+with pestana_riesgo:
+    puntuados = puntuar_clientes_actuales(modelo, umbral)
+
+    n_actuales = len(puntuados)
+    n_riesgo = int(puntuados["en_riesgo"].sum())
+    col_actuales, col_riesgo, col_porcentaje = st.columns(3, border=True)
+    col_actuales.metric(textos["indicador_actuales"], n_actuales)
+    col_riesgo.metric(textos["indicador_riesgo"], n_riesgo)
+    col_porcentaje.metric(textos["indicador_porcentaje"], f"{n_riesgo / n_actuales:.1%}")
+
+    # Filtros: por defecto están marcadas todas las opciones, es decir, no se filtra nada
+    with st.container(border=True):
+        seleccion = {}
+        for columna in COLUMNAS_FILTRO:
+            seleccion[columna] = st.pills(
+                campos[columna], OPCIONES[columna],
+                selection_mode="multi", default=OPCIONES[columna],
+                format_func=mostrar_valor, key=f"filtro_{columna}",
+            )
+        solo_riesgo = st.toggle(textos["filtro_solo_riesgo"], key="filtro_solo_riesgo")
+
+    mascara = pd.Series(True, index=puntuados.index)
+    for columna in COLUMNAS_FILTRO:
+        mascara = mascara & puntuados[columna].isin(seleccion[columna])
+    if solo_riesgo:
+        mascara = mascara & puntuados["en_riesgo"]
+    filtrados = puntuados[mascara].sort_values("churn_probability", ascending=False)
+
+    if len(filtrados) == 0:
+        st.info(textos["sin_resultados"])
+    else:
+        st.caption(textos["clientes_filtrados"].format(n=len(filtrados)))
+        col_tabla, col_grafico = st.columns([3, 2])
+
+        with col_tabla:
+            # La tabla muestra valores traducidos; la descarga, los valores originales
+            tabla = filtrados[COLUMNAS_TABLA].copy()
+            tabla["en_riesgo"] = tabla["en_riesgo"].map(texto_estado)
+            for columna in COLUMNAS_FILTRO:
+                tabla[columna] = tabla[columna].map(mostrar_valor)
+
+            configuracion = {
+                ID: st.column_config.TextColumn(textos["columna_cliente"]),
+                "churn_probability": st.column_config.ProgressColumn(
+                    textos["probabilidad"], format="percent", min_value=0.0, max_value=1.0,
+                ),
+                "en_riesgo": st.column_config.TextColumn(textos["columna_estado"]),
+                "monthly_charges": st.column_config.NumberColumn(
+                    campos["monthly_charges"], format="%.2f",
+                ),
+            }
+            for columna in ["contract", "tenure", "internet_service", "payment_method"]:
+                configuracion[columna] = st.column_config.Column(campos[columna])
+
+            st.dataframe(tabla, hide_index=True, column_config=configuracion)
+            st.download_button(
+                textos["boton_descargar"],
+                data=filtrados.to_csv(index=False),
+                file_name=textos["nombre_descarga"],
+                mime="text/csv",
+                on_click="ignore",
+            )
+
+        with col_grafico:
+            st.altair_chart(grafico_probabilidades(filtrados), width="stretch")
