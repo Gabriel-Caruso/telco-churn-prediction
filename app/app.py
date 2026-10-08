@@ -1079,6 +1079,23 @@ with pestana_exploracion:
     with st.expander(textos["exp_limites_titulo"]):
         st.markdown(textos["exp_limites_texto"])
 
+    # Propuesta para la empresa a partir de los hallazgos anteriores, y su resumen en una línea
+    with tarjeta("exp_solucion"):
+        st.subheader(textos["solucion_titulo"])
+        st.write(textos["solucion_intro"])
+        for numero, frente in enumerate(textos["solucion_frentes"], start=1):
+            st.markdown(f"**{numero}. {frente['titulo']}**")
+            st.write(frente["texto"])
+        st.markdown(f"**{textos['solucion_modelo_titulo']}**")
+        st.write(textos["solucion_modelo_texto"].format(umbral=formatear_decimal(umbral, 2)))
+        st.markdown(f"**{textos['solucion_falta_titulo']}**")
+        st.write(textos["solucion_falta_texto"])
+
+    with tarjeta("exp_tldr"):
+        st.markdown("**TL;DR**")
+        for linea in textos["tldr"]:
+            st.markdown(f"- {linea}")
+
 with pestana_modelo:
     test = puntuar_test(modelo, umbral)
     st.caption(textos["modelo_intro"].format(n=len(test), umbral=formatear_decimal(umbral, 2)))

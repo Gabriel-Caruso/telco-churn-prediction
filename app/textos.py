@@ -187,6 +187,63 @@ TEXTOS = {
             "Los servicios que **resuelven problemas** acompañan a la permanencia. Los de "
             "**entretenimiento** no la mueven prácticamente nada."
         ),
+        "solucion_titulo": "Qué haría la empresa",
+        "solucion_intro": (
+            "Los datos señalan tres frentes, ordenados por su peso en las bajas. Ninguno "
+            "demuestra una causa, así que cada acción se plantea como una prueba con un grupo de "
+            "control antes de extenderla a toda la base."
+        ),
+        "solucion_frentes": [
+            {
+                "titulo": "Acompañar los tres primeros meses",
+                "texto": (
+                    "El 56 % de los clientes con tres meses o menos se va, y de ese 15 % de la "
+                    "base sale casi un tercio de todas las bajas. Propuesta: un programa de "
+                    "bienvenida (seguimiento en el primer mes, revisión de la instalación) y una "
+                    "oferta para pasar a contrato anual, la variable que más separa: 43 % de bajas "
+                    "en contrato mensual, 11 % a un año y 3 % a dos años."
+                ),
+            },
+            {
+                "titulo": "No bajar precios: completar la fibra con soporte",
+                "texto": (
+                    "La fibra concentra el 69 % de las bajas, pero el precio no es la palanca: "
+                    "dentro de la fibra, quien más paga se va menos (paradoja de Simpson). Lo que "
+                    "separa es contratarla sola: sin servicios extra se va el 60 %; con los seis, "
+                    "el 9 %. Propuesta: ofrecer seguridad online o soporte técnico a los clientes "
+                    "de fibra sin extras, los servicios que más acompañan a la permanencia (unos "
+                    "27 puntos), y no streaming (3-4 puntos)."
+                ),
+            },
+            {
+                "titulo": "Pasar el cheque electrónico a domiciliación",
+                "texto": (
+                    "A igualdad de contrato, el cheque electrónico tiene unos 20 puntos más de "
+                    "bajas que cualquier pago automático. Propuesta: un incentivo para domiciliar "
+                    "el pago, empezando por los contratos mensuales."
+                ),
+            },
+        ],
+        "solucion_modelo_titulo": "Cómo usar el modelo",
+        "solucion_modelo_texto": (
+            "Cada mes, la lista de riesgo indica a quién contactar primero. El umbral de {umbral} "
+            "está en el tramo donde cada baja detectada cuesta alrededor de una llamada y media; "
+            "el valor definitivo debe fijarse con tres cifras que tiene la empresa: el coste de "
+            "una oferta, el valor de un cliente retenido y el porcentaje de ofertas que funcionan."
+        ),
+        "solucion_falta_titulo": "Qué falta saber",
+        "solucion_falta_texto": (
+            "Por qué falla la fibra (precio, calidad o competencia) no está en los datos: hacen "
+            "falta encuestas de salida. Y solo un experimento con grupo de control dirá si los "
+            "servicios retienen o si los contrata quien ya pensaba quedarse."
+        ),
+        "tldr": [
+            "**Los nuevos se van** → cuídalos los tres primeros meses.",
+            "**El contrato mensual no ata** → ofrece pasar a anual.",
+            "**La fibra sola no convence** → añade soporte, no bajes el precio.",
+            "**El cheque electrónico se escapa** → que domicilien el pago.",
+            "**¿A quién llamar primero?** → a lo alto de la lista de riesgo.",
+        ],
         "exp_limites_titulo": "Lo que estos datos no pueden responder",
         "exp_limites_texto": (
             "**No sabemos por qué la fibra falla.** Los datos dicen que los clientes de fibra "
@@ -560,6 +617,63 @@ TEXTOS = {
             "Services that **solve problems** go hand in hand with retention. **Entertainment** "
             "ones barely move it at all."
         ),
+        "solucion_titulo": "What the company should do",
+        "solucion_intro": (
+            "The data points to three fronts, ordered by their weight in churn. None of them "
+            "proves a cause, so each action is framed as a test with a control group before "
+            "rolling it out to the whole base."
+        ),
+        "solucion_frentes": [
+            {
+                "titulo": "Support the first three months",
+                "texto": (
+                    "56% of customers with three months or less leave, and that 15% of the base "
+                    "accounts for almost a third of all churn. Proposal: an onboarding programme "
+                    "(follow-up in the first month, installation check) and an offer to move to a "
+                    "one-year contract, the variable that separates most: 43% churn on "
+                    "month-to-month, 11% on one year and 3% on two years."
+                ),
+            },
+            {
+                "titulo": "Do not cut prices: complete fiber with support",
+                "texto": (
+                    "Fiber holds 69% of churn, but price is not the lever: within fiber, those "
+                    "who pay more leave less (Simpson's paradox). What separates is buying it on "
+                    "its own: with no extra services 60% leave; with all six, 9%. Proposal: offer "
+                    "online security or tech support to fiber customers with no extras, the "
+                    "services most associated with staying (about 27 points), rather than "
+                    "streaming (3-4 points)."
+                ),
+            },
+            {
+                "titulo": "Move electronic check to automatic payment",
+                "texto": (
+                    "With contract held constant, electronic check shows some 20 more points of "
+                    "churn than any automatic payment. Proposal: an incentive to set up automatic "
+                    "payment, starting with month-to-month contracts."
+                ),
+            },
+        ],
+        "solucion_modelo_titulo": "How to use the model",
+        "solucion_modelo_texto": (
+            "Every month, the risk list shows who to contact first. The {umbral} threshold sits "
+            "in the range where each detected churner costs about one and a half calls; the "
+            "final value should be set with three figures the company has: the cost of an offer, "
+            "the value of a retained customer and the share of offers that work."
+        ),
+        "solucion_falta_titulo": "What we still need to know",
+        "solucion_falta_texto": (
+            "Why fiber fails (price, quality or competition) is not in the data: exit surveys "
+            "are needed. And only an experiment with a control group will tell whether services "
+            "retain customers or are simply bought by those who already meant to stay."
+        ),
+        "tldr": [
+            "**New customers leave** → look after them for the first three months.",
+            "**Month-to-month does not bind** → offer a one-year contract.",
+            "**Fiber on its own does not convince** → add support, do not cut the price.",
+            "**Electronic check slips away** → get them on automatic payment.",
+            "**Who to call first?** → the top of the risk list.",
+        ],
         "exp_limites_titulo": "What this data cannot answer",
         "exp_limites_texto": (
             "**We do not know why fiber is failing.** The data says fiber customers leave far "
