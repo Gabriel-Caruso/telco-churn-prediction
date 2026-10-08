@@ -1,0 +1,8 @@
+{
+  "model_name": "telco_churn.models.churn_classifier",
+  "version": 1,
+  "run_id": "6386e18fcd27466f985d11972fe74fd6",
+  "umbral": 0.4,
+  "scikit_learn": "1.6.1",
+  "exportado": "2026-10-08T12:24:42.786067+00:00"
+}
