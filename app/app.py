@@ -23,9 +23,19 @@ from textos import TEXTOS
 
 URL_REPO = "https://github.com/Gabriel-Caruso/telco-churn-prediction"
 
-# Okabe-Ito: naranja para riesgo, azul para fuera de riesgo
+# Colores. Los del tema (fondo, texto, acento) están en .streamlit/config.toml.
+# Okabe-Ito: naranja para riesgo, azul para fuera de riesgo. Son los únicos con significado.
 COLOR_RIESGO = "#E69F00"
 COLOR_SIN_RIESGO = "#0072B2"
+# Gráficos sin categorías de riesgo: marcas de datos, líneas de referencia y punto destacado
+COLOR_DATOS = "#6EE7B7"
+COLOR_REFERENCIA = "#8A9A94"
+COLOR_DESTACADO = "#E6EDEA"
+# Diagrama de arquitectura: Graphviz no hereda el tema, así que se le dan los colores aquí
+COLOR_DIAGRAMA_FONDO = "#131C19"
+COLOR_DIAGRAMA_TEXTO = "#E6EDEA"
+COLOR_DIAGRAMA_BORDE = "#2E3D37"
+COLOR_DIAGRAMA_LINEAS = "#8A9A94"
 
 SERVICIOS_INTERNET = SERVICIOS_SOPORTE + SERVICIOS_OCIO
 SI_NO = ["Yes", "No"]
@@ -252,18 +262,19 @@ def diagrama_arquitectura():
     lineas = [
         "digraph {",
         'rankdir=LR; bgcolor="transparent";',
-        'node [shape=box, style="rounded,filled", fillcolor="#F2F2F2", '
-        'color="#999999", fontcolor="#1A1A1A", fontname="sans-serif", fontsize=11];',
-        'edge [color="#999999"];',
+        f'node [shape=box, style="rounded,filled", fillcolor="{COLOR_DIAGRAMA_FONDO}", '
+        f'color="{COLOR_DIAGRAMA_BORDE}", fontcolor="{COLOR_DIAGRAMA_TEXTO}", '
+        'fontname="sans-serif", fontsize=13];',
+        f'edge [color="{COLOR_DIAGRAMA_LINEAS}"];',
         "subgraph cluster_databricks {",
-        f'label="{nodos["grupo_databricks"]}"; fontcolor="#999999"; color="#999999"; style="dashed,rounded";',
+        f'label="{nodos["grupo_databricks"]}"; fontcolor="{COLOR_DIAGRAMA_LINEAS}"; color="{COLOR_DIAGRAMA_LINEAS}"; style="dashed,rounded";',
     ]
     for nodo in nodos_databricks:
         lineas.append(f'{nodo} [label="{nodos[nodo]}"];')
     lineas.append("}")
     lineas.append("subgraph cluster_streamlit {")
     lineas.append(
-        f'label="{nodos["grupo_streamlit"]}"; fontcolor="#999999"; color="#999999"; style="dashed,rounded";'
+        f'label="{nodos["grupo_streamlit"]}"; fontcolor="{COLOR_DIAGRAMA_LINEAS}"; color="{COLOR_DIAGRAMA_LINEAS}"; style="dashed,rounded";'
     )
     lineas.append(f'app [label="{nodos["app"]}"];')
     lineas.append("}")
@@ -322,7 +333,7 @@ def grafico_contribuciones(tabla):
             alt.Tooltip("contribucion:Q", title=textos["explicacion_eje"], format="+.2f"),
         ],
     )
-    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color="gray").encode(x="cero:Q")
+    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color=COLOR_REFERENCIA).encode(x="cero:Q")
     return barras + cero
 
 
@@ -332,13 +343,13 @@ def grafico_precision_recall(test, umbral_prueba, matriz):
     curva = pd.DataFrame({"recall": recall, "precision": precision, "orden": range(len(recall))})
     base = test["churn"].mean()
 
-    linea = alt.Chart(curva).mark_line(color="gray").encode(
+    linea = alt.Chart(curva).mark_line(color=COLOR_DATOS).encode(
         x=alt.X("recall:Q", title=textos["eje_recall"], scale=alt.Scale(domain=[0, 1])),
         y=alt.Y("precision:Q", title=textos["eje_precision"], scale=alt.Scale(domain=[0, 1])),
         order="orden:Q",
     )
     azar = alt.Chart(pd.DataFrame({"base": [base]})).mark_rule(
-        color="gray", strokeDash=[6, 4],
+        color=COLOR_REFERENCIA, strokeDash=[6, 4],
     ).encode(y="base:Q")
 
     detectados = matriz["detectados"]
@@ -352,7 +363,7 @@ def grafico_precision_recall(test, umbral_prueba, matriz):
         "precision": [precision_umbral],
         "etiqueta": [f"{textos['modelo_slider']}: {umbral_prueba:.2f}"],
     })
-    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color="gray").encode(
+    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color=COLOR_DESTACADO).encode(
         x="recall:Q", y="precision:Q", tooltip=["etiqueta:N"],
     )
     return linea + azar + punto
@@ -370,7 +381,7 @@ def grafico_ganancia(test, umbral_prueba):
     })
     datos = pd.concat([curva, azar], ignore_index=True)
 
-    lineas = alt.Chart(datos).mark_line(color="gray").encode(
+    lineas = alt.Chart(datos).mark_line(color=COLOR_DATOS).encode(
         x=alt.X("contactados:Q", title=textos["eje_contactados"], axis=alt.Axis(format="%")),
         y=alt.Y("capturadas:Q", title=textos["eje_capturadas"], axis=alt.Axis(format="%")),
         strokeDash=alt.StrokeDash(
@@ -388,7 +399,7 @@ def grafico_ganancia(test, umbral_prueba):
         "capturadas": [test.loc[marcados, "churn"].sum() / test["churn"].sum()],
         "etiqueta": [f"{textos['modelo_slider']}: {umbral_prueba:.2f}"],
     })
-    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color="gray").encode(
+    punto = alt.Chart(punto_datos).mark_point(size=120, filled=True, color=COLOR_DESTACADO).encode(
         x="contactados:Q", y="capturadas:Q", tooltip=["etiqueta:N"],
     )
     return lineas + punto
@@ -401,7 +412,7 @@ def grafico_importancia(importancia):
     for variable in primeras.index:
         etiquetas.append(textos["campos"][variable])
     datos = pd.DataFrame({"variable": etiquetas, "importancia": primeras.to_numpy()})
-    return alt.Chart(datos).mark_bar(color="gray").encode(
+    return alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
         x=alt.X("importancia:Q", title=textos["eje_importancia"]),
         y=alt.Y("variable:N", sort="-x", title=None),
         tooltip=[alt.Tooltip("importancia:Q", format=".2f")],
@@ -419,10 +430,10 @@ def grafico_challengers(folds):
     datos = pd.concat([puntos, medias], ignore_index=True)
 
     banda = alt.Chart(pd.DataFrame({"desde": [-0.02], "hasta": [0.02]})).mark_rect(
-        color="gray", opacity=0.2,
+        color=COLOR_REFERENCIA, opacity=0.2,
     ).encode(x="desde:Q", x2="hasta:Q")
-    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color="gray").encode(x="cero:Q")
-    marcas = alt.Chart(datos).mark_point(filled=True, color="gray", size=90).encode(
+    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color=COLOR_REFERENCIA).encode(x="cero:Q")
+    marcas = alt.Chart(datos).mark_point(filled=True, color=COLOR_DATOS, size=90).encode(
         x=alt.X("diferencia:Q", title=textos["eje_diferencia"], axis=alt.Axis(format="+.2f")),
         y=alt.Y("modelo:N", title=None),
         shape=alt.Shape(
@@ -460,26 +471,26 @@ def grafico_tasa_barras(tabla, referencia, titulo_x, etiquetas=None, horizontal=
     ]
     referencia_datos = pd.DataFrame({"referencia": [referencia]})
     if horizontal:
-        barras = alt.Chart(datos).mark_bar(color="gray").encode(
+        barras = alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
             x=alt.X("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
             y=alt.Y("nombre:N", sort="-x", title=None),
             tooltip=tooltip,
         )
-        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(x="referencia:Q")
+        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(x="referencia:Q")
     else:
-        barras = alt.Chart(datos).mark_bar(color="gray").encode(
+        barras = alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
             x=alt.X("nombre:N", sort=None, title=titulo_x, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=eje_tasa),
             tooltip=tooltip,
         )
-        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(y="referencia:Q")
+        linea = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(y="referencia:Q")
     return barras + linea
 
 
 def grafico_tasa_antiguedad(tabla, referencia):
     """Tasa de baja mes a mes de antigüedad, con la tasa global como referencia."""
     datos = tabla.rename(columns={"grupo": "tenure"})
-    linea = alt.Chart(datos).mark_line(color="gray", point=True).encode(
+    linea = alt.Chart(datos).mark_line(color=COLOR_DATOS, point=True).encode(
         x=alt.X("tenure:Q", title=textos["campos"]["tenure"]),
         y=alt.Y("tasa:Q", title=textos["exp_eje_tasa"], axis=alt.Axis(format="%")),
         tooltip=[
@@ -489,7 +500,7 @@ def grafico_tasa_antiguedad(tabla, referencia):
         ],
     )
     referencia_datos = pd.DataFrame({"referencia": [referencia]})
-    global_ = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color="gray").encode(y="referencia:Q")
+    global_ = alt.Chart(referencia_datos).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(y="referencia:Q")
     return linea + global_
 
 
@@ -502,7 +513,7 @@ def grafico_servicios(tabla):
     datos["nombre"] = nombres
     datos["puntos"] = datos["diferencia"] * 100
     datos = datos[["nombre", "puntos"]]
-    return alt.Chart(datos).mark_bar(color="gray").encode(
+    return alt.Chart(datos).mark_bar(color=COLOR_DATOS).encode(
         x=alt.X("puntos:Q", title=textos["exp_servicios_eje"]),
         y=alt.Y("nombre:N", sort="-x", title=None),
         tooltip=[alt.Tooltip("puntos:Q", title=textos["exp_servicios_eje"], format=".1f")],
@@ -544,10 +555,10 @@ def grafico_probabilidades(puntuados):
         "umbral": [umbral],
         "etiqueta": [textos["grafico_umbral"].format(umbral=f"{umbral:.0%}")],
     })
-    linea = alt.Chart(datos_umbral).mark_rule(strokeDash=[6, 4], color="gray").encode(
+    linea = alt.Chart(datos_umbral).mark_rule(strokeDash=[6, 4], color=COLOR_REFERENCIA).encode(
         x="umbral:Q",
     )
-    etiqueta = alt.Chart(datos_umbral).mark_text(align="left", dx=6, dy=-6, color="gray").encode(
+    etiqueta = alt.Chart(datos_umbral).mark_text(align="left", dx=6, dy=-6, color=COLOR_REFERENCIA).encode(
         x="umbral:Q",
         y=alt.value(0),
         text="etiqueta:N",
