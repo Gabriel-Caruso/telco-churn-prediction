@@ -5,7 +5,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.logica import altas_nuevas, cambios_en_riesgo, pasar_un_mes, puntuar
+from churn.features import silver_a_gold
+from app.logica import (
+    altas_nuevas, cambios_en_riesgo, contribuciones, medias_transformadas, pasar_un_mes, puntuar,
+)
 
 RUTA_MODELO = Path(__file__).resolve().parents[1] / "app" / "model" / "churn_classifier.joblib"
 
@@ -160,3 +163,32 @@ def test_cambios_en_riesgo_entran_y_salen():
     entran, salen = cambios_en_riesgo(anterior, actual)
     assert entran == ["C", "NEW-0001"]
     assert salen == ["B"]
+
+
+def test_contribuciones_suman_la_diferencia_de_logit(clientes, modelo):
+    """La suma de aportaciones es el logit del cliente menos el del cliente medio."""
+    medias = medias_transformadas(clientes, modelo)
+    cliente = clientes.iloc[[1]]
+    tabla = contribuciones(cliente, modelo, medias)
+
+    gold = silver_a_gold(cliente).drop(columns=["customer_id"])
+    probabilidad = modelo.predict_proba(gold)[0, 1]
+    logit_cliente = np.log(probabilidad / (1 - probabilidad))
+    regresion = modelo.named_steps["modelo"]
+    logit_medio = regresion.intercept_[0] + regresion.coef_[0] @ medias
+
+    assert np.isclose(tabla["contribucion"].sum(), logit_cliente - logit_medio)
+
+
+def test_contribuciones_una_fila_por_variable(clientes, modelo):
+    medias = medias_transformadas(clientes, modelo)
+    tabla = contribuciones(clientes.iloc[[0]], modelo, medias)
+    columnas_modelo = modelo.named_steps["preprocesado"].feature_names_in_
+    assert sorted(tabla["variable"]) == sorted(columnas_modelo)
+
+
+def test_contribuciones_no_modifica_la_entrada(clientes, modelo):
+    original = clientes.copy()
+    medias = medias_transformadas(clientes, modelo)
+    contribuciones(clientes.iloc[[0]], modelo, medias)
+    pd.testing.assert_frame_equal(clientes, original)

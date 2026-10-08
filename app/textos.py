@@ -103,6 +103,17 @@ TEXTOS = {
             "La probabilidad de baja es del {probabilidad}, inferior al umbral del "
             "{umbral}. El cliente no entra en la lista de riesgo."
         ),
+        "explicacion_titulo": "Por qué esta probabilidad",
+        "explicacion_nota": (
+            "Aportación de cada variable respecto al cliente medio de entrenamiento, en "
+            "escala logit. Las barras naranjas suben la probabilidad de baja y las azules "
+            "la bajan. Se muestran las {n} que más pesan en cada sentido."
+        ),
+        "explicacion_sube": "Sube el riesgo",
+        "explicacion_baja": "Baja el riesgo",
+        "explicacion_eje": "Aportación al logit",
+        "explicacion_efecto": "Efecto",
+        "explicacion_variable": "Variable",
         "indicador_actuales": "Clientes actuales",
         "indicador_riesgo": "Clientes en riesgo",
         "indicador_porcentaje": "Porcentaje en riesgo",
@@ -157,6 +168,14 @@ TEXTOS = {
             "tech_support": "Soporte técnico",
             "streaming_tv": "TV en streaming",
             "streaming_movies": "Películas en streaming",
+            "is_new_customer": "Cliente nuevo (0 meses)",
+            "tenure_max": "Antigüedad máxima (72 meses)",
+            "n_support_services": "Servicios de soporte contratados",
+            "n_entertainment_services": "Servicios de ocio contratados",
+            "avg_historical_charge": "Cargo medio histórico",
+            "charge_ratio": "Cargo actual / cargo medio histórico",
+            "fiber_no_support": "Fibra sin servicios de soporte",
+            "automatic_payment": "Pago automático",
         },
         "valores": {
             0: "No",
@@ -269,6 +288,17 @@ TEXTOS = {
             "The churn probability is {probabilidad}, below the {umbral} threshold. "
             "The customer does not enter the risk list."
         ),
+        "explicacion_titulo": "Why this probability",
+        "explicacion_nota": (
+            "Contribution of each variable relative to the average training customer, "
+            "on the logit scale. Orange bars raise the churn probability and blue bars "
+            "lower it. The {n} strongest in each direction are shown."
+        ),
+        "explicacion_sube": "Raises risk",
+        "explicacion_baja": "Lowers risk",
+        "explicacion_eje": "Contribution to logit",
+        "explicacion_efecto": "Effect",
+        "explicacion_variable": "Variable",
         "indicador_actuales": "Current customers",
         "indicador_riesgo": "Customers at risk",
         "indicador_porcentaje": "Share at risk",
@@ -323,6 +353,14 @@ TEXTOS = {
             "tech_support": "Tech support",
             "streaming_tv": "Streaming TV",
             "streaming_movies": "Streaming movies",
+            "is_new_customer": "New customer (0 months)",
+            "tenure_max": "Maximum tenure (72 months)",
+            "n_support_services": "Support services held",
+            "n_entertainment_services": "Entertainment services held",
+            "avg_historical_charge": "Average historical charge",
+            "charge_ratio": "Current charge / historical average",
+            "fiber_no_support": "Fiber without support services",
+            "automatic_payment": "Automatic payment",
         },
         "valores": {
             0: "No",

@@ -83,3 +83,66 @@ def cambios_en_riesgo(anterior: pd.DataFrame, actual: pd.DataFrame) -> tuple[lis
     entran = sorted(riesgo_ahora - riesgo_antes)
     salen = sorted(riesgo_antes - riesgo_ahora)
     return entran, salen
+
+
+def _transformar(clientes: pd.DataFrame, modelo) -> np.ndarray:
+    """Aplica silver_a_gold y el paso de preprocesado del pipeline."""
+    gold = silver_a_gold(clientes)
+    X = gold.drop(columns=[ID, TARGET], errors="ignore")
+    return modelo.named_steps["preprocesado"].transform(X)
+
+
+def medias_transformadas(clientes_train: pd.DataFrame, modelo) -> np.ndarray:
+    """Media de cada variable transformada (tras OneHot y StandardScaler) en entrenamiento.
+    Representa al 'cliente medio' con el que se compara cada cliente."""
+    return _transformar(clientes_train, modelo).mean(axis=0)
+
+
+def variable_de_cada_columna(modelo) -> list:
+    """Para cada columna transformada, la variable gold de la que sale.
+    Por ejemplo, cat__contract_Month-to-month sale de contract."""
+    preprocesado = modelo.named_steps["preprocesado"]
+    variables = []
+    for nombre, transformador, columnas in preprocesado.transformers_:
+        if transformador == "drop":
+            continue
+        if nombre == "cat":
+            # El OneHotEncoder crea una columna por cada categoría de cada variable
+            for columna, categorias in zip(columnas, transformador.categories_):
+                for _ in categorias:
+                    variables.append(columna)
+        else:
+            for columna in columnas:
+                variables.append(columna)
+    return variables
+
+
+def contribuciones(cliente: pd.DataFrame, modelo, medias: np.ndarray) -> pd.DataFrame:
+    """Aportación de cada variable a la predicción de un cliente (una fila en formato silver),
+    respecto al cliente medio de entrenamiento.
+
+    En una regresión logística el logit es intercepto + suma de coef * valor. La aportación
+    de cada columna es coef * (valor - media), así que la suma de aportaciones es el logit
+    del cliente menos el logit del cliente medio: positivo sube la probabilidad de baja.
+    Es el valor SHAP exacto de un modelo lineal. Las columnas del OneHot se suman por variable.
+
+    Devuelve una fila por variable con su valor en gold y su aportación, ordenada de mayor
+    a menor aportación."""
+    coeficientes = modelo.named_steps["modelo"].coef_[0]
+    valores = _transformar(cliente, modelo)[0]
+    aportes = coeficientes * (valores - medias)
+
+    suma_por_variable = {}
+    for variable, aporte in zip(variable_de_cada_columna(modelo), aportes):
+        suma_por_variable[variable] = suma_por_variable.get(variable, 0.0) + aporte
+
+    gold = silver_a_gold(cliente)
+    filas = []
+    for variable, aporte in suma_por_variable.items():
+        filas.append({
+            "variable": variable,
+            "valor": gold[variable].iloc[0],
+            "contribucion": aporte,
+        })
+    tabla = pd.DataFrame(filas)
+    return tabla.sort_values("contribucion", ascending=False, ignore_index=True)

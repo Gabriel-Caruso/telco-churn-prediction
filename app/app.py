@@ -14,7 +14,9 @@ CARPETA_APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(CARPETA_APP.parent))
 
 from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
-from logica import altas_nuevas, cambios_en_riesgo, pasar_un_mes, puntuar
+from logica import (
+    altas_nuevas, cambios_en_riesgo, contribuciones, medias_transformadas, pasar_un_mes, puntuar,
+)
 from textos import TEXTOS
 
 URL_REPO = "https://github.com/Gabriel-Caruso/telco-churn-prediction"
@@ -47,6 +49,8 @@ COLUMNAS_TABLA = [
 ]
 COLUMNAS_FILTRO = ["contract", "internet_service", "payment_method"]
 COLUMNAS_ENTERAS = ["senior_citizen", "tenure"]
+# Variables que más suben y más bajan el riesgo que se muestran en la explicación
+N_EXPLICACION = 5
 COLUMNAS_DECIMALES = ["monthly_charges", "total_charges"]
 
 st.set_page_config(page_title="Telco churn", layout="wide")
@@ -78,13 +82,25 @@ def cargar_clientes_silver():
 
 
 @st.cache_data
-def puntuar_test(_modelo, umbral):
-    """Puntúa los clientes del conjunto de test: el mismo split que se usó en Databricks
+def cargar_ids_test():
+    """IDs del conjunto de test: el mismo split que se usó en Databricks
     (ids_test.csv sale de gold_split.csv, exportado en 11_challenger)."""
+    return pd.read_csv(CARPETA_APP / "data" / "ids_test.csv")[ID]
+
+
+@st.cache_data
+def puntuar_test(_modelo, umbral):
     silver = cargar_clientes_silver()
-    ids_test = pd.read_csv(CARPETA_APP / "data" / "ids_test.csv")[ID]
-    test = silver[silver[ID].isin(ids_test)]
+    test = silver[silver[ID].isin(cargar_ids_test())]
     return puntuar(test, _modelo, umbral)
+
+
+@st.cache_data
+def medias_entrenamiento(_modelo):
+    """Cliente medio de entrenamiento, con el que se compara cada cliente en la explicación."""
+    silver = cargar_clientes_silver()
+    train = silver[~silver[ID].isin(cargar_ids_test())]
+    return medias_transformadas(train, _modelo)
 
 
 modelo, metadatos = cargar_modelo()
@@ -243,6 +259,55 @@ def diagrama_arquitectura():
         lineas.append(f"{origen} -> {destino} [style=dashed];")
     lineas.append("}")
     return "\n".join(lineas)
+
+
+def formatear_valor(valor):
+    """Valor de una variable gold para mostrarlo: números con su cifra, el resto traducido.
+    Los enteros no pasan por mostrar_valor porque 0 y 1 se traducirían como No y Sí."""
+    if isinstance(valor, (bool, np.bool_)):
+        return mostrar_valor(int(valor))
+    if isinstance(valor, (int, np.integer)):
+        return str(valor)
+    if isinstance(valor, (float, np.floating)):
+        return f"{valor:.2f}"
+    return mostrar_valor(valor)
+
+
+def grafico_contribuciones(tabla):
+    """Barras horizontales con las variables que más suben y más bajan el riesgo."""
+    suben = tabla[tabla["contribucion"] > 0].head(N_EXPLICACION)
+    # La tabla está ordenada de mayor a menor: las que más bajan están al final
+    bajan = tabla[tabla["contribucion"] < 0].tail(N_EXPLICACION)
+    datos = pd.concat([suben, bajan], ignore_index=True)
+
+    etiquetas = []
+    efectos = []
+    for variable, valor, aporte in zip(datos["variable"], datos["valor"], datos["contribucion"]):
+        etiquetas.append(f"{textos['campos'][variable]}: {formatear_valor(valor)}")
+        if aporte > 0:
+            efectos.append(textos["explicacion_sube"])
+        else:
+            efectos.append(textos["explicacion_baja"])
+    datos["etiqueta"] = etiquetas
+    datos["efecto"] = efectos
+    # La columna valor mezcla texto, números y booleanos y el gráfico no la necesita
+    datos = datos[["etiqueta", "efecto", "contribucion"]]
+
+    colores = alt.Scale(
+        domain=[textos["explicacion_sube"], textos["explicacion_baja"]],
+        range=[COLOR_RIESGO, COLOR_SIN_RIESGO],
+    )
+    barras = alt.Chart(datos).mark_bar().encode(
+        x=alt.X("contribucion:Q", title=textos["explicacion_eje"]),
+        y=alt.Y("etiqueta:N", sort="-x", title=None),
+        color=alt.Color("efecto:N", title=textos["explicacion_efecto"], scale=colores),
+        tooltip=[
+            alt.Tooltip("etiqueta:N", title=textos["explicacion_variable"]),
+            alt.Tooltip("contribucion:Q", title=textos["explicacion_eje"], format="+.2f"),
+        ],
+    )
+    cero = alt.Chart(pd.DataFrame({"cero": [0]})).mark_rule(color="gray").encode(x="cero:Q")
+    return barras + cero
 
 
 def texto_estado(en_riesgo):
@@ -458,6 +523,12 @@ with pestana_cliente:
                 st.metric(textos["probabilidad"], f"{probabilidad:.1%}")
                 st.markdown(etiqueta_riesgo(en_riesgo), unsafe_allow_html=True)
                 st.write(frase.format(probabilidad=f"{probabilidad:.1%}", umbral=f"{umbral:.0%}"))
+
+            with st.container(border=True):
+                st.markdown(f"**{textos['explicacion_titulo']}**")
+                st.caption(textos["explicacion_nota"].format(n=N_EXPLICACION))
+                tabla = contribuciones(cliente, modelo, medias_entrenamiento(modelo))
+                st.altair_chart(grafico_contribuciones(tabla), width="stretch")
 
 with pestana_riesgo:
     puntuados = puntuar_clientes_actuales(modelo, umbral)
