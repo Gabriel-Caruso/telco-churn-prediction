@@ -189,6 +189,7 @@ TEXTOS = {
             "Customer Churn, desarrollado en Databricks con MLflow y Unity Catalog."
         ),
         "enlace_repo": "Código en GitHub",
+        "ayuda_info": "Sobre el proyecto y el modelo",
         "ficha_modelo": "Modelo",
         "ficha_nombre": "Nombre",
         "ficha_version": "Versión",
@@ -486,6 +487,7 @@ TEXTOS = {
             "dataset, built on Databricks with MLflow and Unity Catalog."
         ),
         "enlace_repo": "Code on GitHub",
+        "ayuda_info": "About the project and the model",
         "ficha_modelo": "Model",
         "ficha_nombre": "Name",
         "ficha_version": "Version",

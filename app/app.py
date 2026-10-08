@@ -563,31 +563,38 @@ if clave("tenure") not in st.session_state:
 if "sim_clientes" not in st.session_state:
     reiniciar_simulacion(clientes)
 
-with st.sidebar:
-    # La etiqueta va en los dos idiomas porque todavía no se sabe cuál se ha elegido.
-    idioma = st.segmented_control(
-        "Idioma / Language",
-        options=["es", "en"],
-        default="es",
-        required=True,
-        format_func=str.upper,
-        key="idioma",
-    )
-    textos = TEXTOS[idioma]
+# Cabecera: título a la izquierda y barra de iconos a la derecha. La barra se rellena
+# primero porque el idioma elegido decide en qué idioma se escribe el título.
+col_titulo, col_barra = st.columns([3, 1], vertical_alignment="center")
 
-    st.markdown(textos["sobre_proyecto"])
-    st.markdown(f"[{textos['enlace_repo']}]({URL_REPO})")
+with col_barra:
+    with st.container(horizontal=True, horizontal_alignment="right", vertical_alignment="center"):
+        # La etiqueta va en los dos idiomas porque todavía no se sabe cuál se ha elegido.
+        idioma = st.segmented_control(
+            "Idioma / Language",
+            options=["es", "en"],
+            default="es",
+            required=True,
+            format_func=str.upper,
+            key="idioma",
+            label_visibility="collapsed",
+        )
+        textos = TEXTOS[idioma]
 
-    fecha_exportado = datetime.fromisoformat(metadatos["exportado"]).date().isoformat()
-    with st.container(border=True):
-        st.markdown(f"**{textos['ficha_modelo']}**")
-        st.markdown(f"{textos['ficha_nombre']}: `{metadatos['model_name']}`")
-        st.markdown(f"{textos['ficha_version']}: {metadatos['version']}")
-        st.markdown(f"{textos['ficha_umbral']}: {umbral:.0%}")
-        st.markdown(f"{textos['ficha_fecha']}: {fecha_exportado}")
+        with st.popover("", icon=":material/info:", help=textos["ayuda_info"]):
+            st.markdown(textos["sobre_proyecto"])
+            fecha_exportado = datetime.fromisoformat(metadatos["exportado"]).date().isoformat()
+            st.markdown(f"**{textos['ficha_modelo']}**")
+            st.markdown(f"{textos['ficha_nombre']}: `{metadatos['model_name']}`")
+            st.markdown(f"{textos['ficha_version']}: {metadatos['version']}")
+            st.markdown(f"{textos['ficha_umbral']}: {umbral:.0%}")
+            st.markdown(f"{textos['ficha_fecha']}: {fecha_exportado}")
 
-st.title(textos["titulo"])
-st.write(textos["subtitulo"])
+        st.link_button("", URL_REPO, icon=":material/code:", help=textos["enlace_repo"])
+
+with col_titulo:
+    st.title(textos["titulo"])
+    st.write(textos["subtitulo"])
 
 (
     pestana_resumen, pestana_cliente, pestana_riesgo, pestana_simulacion,
