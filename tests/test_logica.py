@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.logica import altas_nuevas, pasar_un_mes, puntuar
+from app.logica import altas_nuevas, cambios_en_riesgo, pasar_un_mes, puntuar
 
 RUTA_MODELO = Path(__file__).resolve().parents[1] / "app" / "model" / "churn_classifier.joblib"
 
@@ -146,3 +146,17 @@ def test_simulacion_se_puede_puntuar(clientes, modelo):
         estado = pasar_un_mes(estado)
     puntuados = puntuar(estado, modelo, 0.4)
     assert len(puntuados) == len(estado)
+
+
+def test_cambios_en_riesgo_entran_y_salen():
+    anterior = pd.DataFrame({
+        "customer_id": ["A", "B", "C"],
+        "en_riesgo": [True, True, False],
+    })
+    actual = pd.DataFrame({
+        "customer_id": ["A", "B", "C", "NEW-0001"],
+        "en_riesgo": [True, False, True, True],
+    })
+    entran, salen = cambios_en_riesgo(anterior, actual)
+    assert entran == ["C", "NEW-0001"]
+    assert salen == ["B"]

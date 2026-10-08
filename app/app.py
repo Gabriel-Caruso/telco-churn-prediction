@@ -13,7 +13,7 @@ CARPETA_APP = Path(__file__).resolve().parent
 sys.path.insert(0, str(CARPETA_APP.parent))
 
 from churn.config import ID, SERVICIOS_OCIO, SERVICIOS_SOPORTE
-from logica import puntuar
+from logica import altas_nuevas, cambios_en_riesgo, pasar_un_mes, puntuar
 from textos import TEXTOS
 
 URL_REPO = "https://github.com/Gabriel-Caruso/telco-churn-prediction"
@@ -149,6 +149,39 @@ def etiqueta_riesgo(en_riesgo):
     )
 
 
+def reiniciar_simulacion(clientes):
+    """Deja la simulación en el mes 0, con los clientes actuales ya puntuados."""
+    st.session_state["sim_clientes"] = clientes
+    st.session_state["sim_puntuados"] = puntuar_clientes_actuales(modelo, umbral)
+    st.session_state["sim_mes"] = 0
+    st.session_state["sim_entran"] = None
+    st.session_state["sim_salen"] = None
+    st.session_state["sim_ultima_accion"] = None
+
+
+def aplicar_nuevo_estado(nuevo_estado):
+    """Puntúa el nuevo estado y guarda quién entra y sale de la lista respecto al anterior."""
+    puntuados = puntuar(nuevo_estado, modelo, umbral)
+    entran, salen = cambios_en_riesgo(st.session_state["sim_puntuados"], puntuados)
+    st.session_state["sim_clientes"] = nuevo_estado
+    st.session_state["sim_puntuados"] = puntuados
+    st.session_state["sim_entran"] = len(entran)
+    st.session_state["sim_salen"] = len(salen)
+
+
+def simular_un_mes():
+    st.session_state["sim_mes"] = st.session_state["sim_mes"] + 1
+    aplicar_nuevo_estado(pasar_un_mes(st.session_state["sim_clientes"]))
+    st.session_state["sim_ultima_accion"] = ("mes", 0)
+
+
+def simular_altas():
+    n = st.session_state["sim_n_altas"]
+    mes = st.session_state["sim_mes"]
+    aplicar_nuevo_estado(altas_nuevas(st.session_state["sim_clientes"], n, semilla=42 + mes))
+    st.session_state["sim_ultima_accion"] = ("altas", n)
+
+
 def texto_estado(en_riesgo):
     if en_riesgo:
         return textos["en_riesgo"]
@@ -200,6 +233,8 @@ if "generador" not in st.session_state:
     st.session_state["generador"] = np.random.default_rng(42)
 if clave("tenure") not in st.session_state:
     rellenar_formulario(clientes.iloc[0])
+if "sim_clientes" not in st.session_state:
+    reiniciar_simulacion(clientes)
 
 with st.sidebar:
     # La etiqueta va en los dos idiomas porque todavía no se sabe cuál se ha elegido.
@@ -391,3 +426,39 @@ with pestana_riesgo:
 
         with col_grafico:
             st.altair_chart(grafico_probabilidades(filtrados), width="stretch")
+
+with pestana_simulacion:
+    st.caption(textos["sim_alcance"])
+
+    col_mes, col_altas, col_reiniciar = st.columns(3, border=True, vertical_alignment="bottom")
+    with col_mes:
+        st.button(textos["boton_pasar_mes"], on_click=simular_un_mes, type="primary")
+    with col_altas:
+        st.number_input(
+            textos["sim_n_altas"], min_value=0, max_value=500, value=100, step=10,
+            key="sim_n_altas", help=textos["ayuda_altas"],
+        )
+        st.button(textos["boton_altas"], on_click=simular_altas)
+    with col_reiniciar:
+        st.button(textos["boton_reiniciar"], on_click=reiniciar_simulacion, args=(clientes,))
+
+    sim_puntuados = st.session_state["sim_puntuados"]
+    col_ind_mes, col_ind_total, col_ind_riesgo, col_ind_entran, col_ind_salen = st.columns(5, border=True)
+    col_ind_mes.metric(textos["ind_mes"], st.session_state["sim_mes"])
+    col_ind_total.metric(textos["ind_total"], len(sim_puntuados))
+    col_ind_riesgo.metric(textos["indicador_riesgo"], int(sim_puntuados["en_riesgo"].sum()))
+
+    # Antes de la primera acción no hay estado anterior con el que comparar
+    ultima_accion = st.session_state["sim_ultima_accion"]
+    if ultima_accion is None:
+        col_ind_entran.metric(textos["ind_entran"], "-")
+        col_ind_salen.metric(textos["ind_salen"], "-")
+        st.caption(textos["sim_sin_acciones"])
+    else:
+        col_ind_entran.metric(textos["ind_entran"], st.session_state["sim_entran"])
+        col_ind_salen.metric(textos["ind_salen"], st.session_state["sim_salen"])
+        tipo, n = ultima_accion
+        if tipo == "mes":
+            st.caption(textos["sim_ultima_mes"].format(mes=st.session_state["sim_mes"]))
+        else:
+            st.caption(textos["sim_ultima_altas"].format(n=n, mes=st.session_state["sim_mes"]))

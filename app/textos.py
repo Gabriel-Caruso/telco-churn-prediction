@@ -58,6 +58,27 @@ TEXTOS = {
         "grafico_titulo": "Distribución de la probabilidad de baja",
         "grafico_eje_y": "Clientes",
         "grafico_umbral": "Umbral {umbral}",
+        "sim_alcance": (
+            "La simulación parte de los clientes actuales y no modela bajas: ningún "
+            "cliente se va. Solo muestra cómo cambia el riesgo con el paso del tiempo "
+            "y con las altas nuevas. Los clientes con 72 meses, el máximo del dataset, "
+            "no cambian al pasar el mes."
+        ),
+        "boton_pasar_mes": "Pasar un mes",
+        "sim_n_altas": "Número de altas nuevas",
+        "ayuda_altas": "Cada alta copia el perfil de un cliente real, con antigüedad 0.",
+        "boton_altas": "Añadir altas",
+        "boton_reiniciar": "Reiniciar simulación",
+        "ind_mes": "Mes simulado",
+        "ind_total": "Clientes totales",
+        "ind_entran": "Entran en la lista",
+        "ind_salen": "Salen de la lista",
+        "sim_sin_acciones": "Todavía no se ha hecho ninguna acción.",
+        "sim_ultima_mes": "Última acción: paso al mes {mes}. Entradas y salidas respecto al mes anterior.",
+        "sim_ultima_altas": (
+            "Última acción: {n} altas nuevas en el mes {mes}. "
+            "Entradas y salidas respecto al estado anterior a las altas."
+        ),
         "campos": {
             "gender": "Género",
             "senior_citizen": "Mayor de 65 años",
@@ -147,6 +168,27 @@ TEXTOS = {
         "grafico_titulo": "Churn probability distribution",
         "grafico_eje_y": "Customers",
         "grafico_umbral": "Threshold {umbral}",
+        "sim_alcance": (
+            "The simulation starts from the current customers and does not model "
+            "churn: no customer leaves. It only shows how risk changes over time and "
+            "with new customers. Customers at 72 months, the dataset maximum, do not "
+            "change when a month passes."
+        ),
+        "boton_pasar_mes": "Advance one month",
+        "sim_n_altas": "Number of new customers",
+        "ayuda_altas": "Each new customer copies the profile of a real one, with tenure 0.",
+        "boton_altas": "Add new customers",
+        "boton_reiniciar": "Reset simulation",
+        "ind_mes": "Simulated month",
+        "ind_total": "Total customers",
+        "ind_entran": "Entering the list",
+        "ind_salen": "Leaving the list",
+        "sim_sin_acciones": "No action taken yet.",
+        "sim_ultima_mes": "Last action: moved to month {mes}. Changes relative to the previous month.",
+        "sim_ultima_altas": (
+            "Last action: {n} new customers in month {mes}. "
+            "Changes relative to the state before they were added."
+        ),
         "campos": {
             "gender": "Gender",
             "senior_citizen": "Senior citizen (65+)",

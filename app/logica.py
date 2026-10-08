@@ -73,3 +73,13 @@ def altas_nuevas(clientes: pd.DataFrame, n: int, semilla: int | None = None) -> 
     nuevas["tenure"] = 0
     nuevas["total_charges"] = 0.0
     return pd.concat([clientes, nuevas], ignore_index=True)
+
+
+def cambios_en_riesgo(anterior: pd.DataFrame, actual: pd.DataFrame) -> tuple[list, list]:
+    """Compara dos estados puntuados y devuelve los customer_id que entran y
+    los que salen de la lista de riesgo. Una alta nueva en riesgo cuenta como entrada."""
+    riesgo_antes = set(anterior.loc[anterior["en_riesgo"], ID])
+    riesgo_ahora = set(actual.loc[actual["en_riesgo"], ID])
+    entran = sorted(riesgo_ahora - riesgo_antes)
+    salen = sorted(riesgo_antes - riesgo_ahora)
+    return entran, salen
